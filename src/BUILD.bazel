@@ -9,3 +9,14 @@ ts_project(
     transpiler = "tsc",
 
 )
+
+filegroup(
+    name = "assets",
+    srcs = ["index.html", ":index"],
+)
+
+sh_binary(
+    name = "server",
+    srcs = ["server.sh"],
+    data = [":assets"],
+)

@@ -1,1 +1,1 @@
-console.log("Hello, Bazel!");
+document.body.innerHTML = '<h1>Hello World</h1>';
