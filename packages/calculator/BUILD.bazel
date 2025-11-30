@@ -1,0 +1,23 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+ts_project(
+    name = "calculator",
+    srcs = ["index.ts"],
+    tsconfig = "//:tsconfig_build",
+    source_map = True,
+    declaration = True,
+    transpiler = "tsc",
+    visibility = ["//visibility:public"],
+)
+
+load("@aspect_rules_js//npm:defs.bzl", "npm_package")
+
+npm_package(
+    name = "pkg",
+    package = "@myorg/calculator",
+    srcs = [
+        "package.json",
+        ":calculator",
+    ],
+    visibility = ["//visibility:public"],
+)

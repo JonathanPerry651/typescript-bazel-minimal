@@ -35,10 +35,14 @@ public class SimpleWebServer {
         public void handle(HttpExchange t) throws IOException {
             String path = t.getRequestURI().getPath();
             if (path.equals("/")) {
-                path = "/index.html";
+                path = "/src/index.html";
+            } else if (path.equals("/index.js")) {
+                path = "/src/index.js";
+            } else if (path.equals("/index.js.map")) {
+                path = "/src/index.js.map";
             }
 
-            File file = new File(rootDir + path);
+            File file = new File("." + path);
             if (file.exists() && !file.isDirectory()) {
                 String contentType = "application/octet-stream";
                 if (path.endsWith(".html")) {

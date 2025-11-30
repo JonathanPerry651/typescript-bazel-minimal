@@ -4,6 +4,7 @@ ts_project(
     name = "index",
     srcs = ["index.tsx"],
     source_map = True,
+    declaration = True,
     tsconfig = "//:tsconfig_build",
     deps = [
         "//:node_modules/react",
@@ -11,6 +12,7 @@ ts_project(
         "//:node_modules/@types/react",
         "//:node_modules/@types/react-dom",
         "//:node_modules/@types/scheduler",
+        "//:node_modules/@myorg/calculator",
     ],
     transpiler = "tsc",
 
@@ -18,7 +20,11 @@ ts_project(
 
 filegroup(
     name = "assets",
-    srcs = ["index.html", ":index"],
+    srcs = [
+        "index.html",
+        ":index",
+        "//:node_modules/@myorg/calculator",
+    ],
 )
 
 

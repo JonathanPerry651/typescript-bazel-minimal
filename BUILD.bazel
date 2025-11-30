@@ -40,3 +40,10 @@ js_library(
 )
 
 npm_link_all_packages(name = "node_modules")
+
+load("@aspect_rules_js//npm:defs.bzl", "npm_link_package")
+
+npm_link_package(
+    name = "node_modules/@myorg/calculator",
+    src = "//packages/calculator:pkg",
+)

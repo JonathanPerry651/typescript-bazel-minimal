@@ -13,15 +13,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Wait for server to be ready
+# Wait for server to be up
 echo "Waiting for server..."
-for i in {1..30}; do
-  if curl -s http://localhost:8080 > /dev/null; then
-    echo "Server is up!"
-    break
-  fi
-  sleep 1
+while ! nc -z localhost 8080; do   
+  sleep 0.1
 done
+echo "Server is up!"
 
 # Run Cypress
 echo "Running Cypress..."
