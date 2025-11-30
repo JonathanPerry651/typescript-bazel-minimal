@@ -1,0 +1,16 @@
+# Bazel
+/bazel-*
+user.bazelrc
+
+# Node
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

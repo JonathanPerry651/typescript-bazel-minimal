@@ -1,0 +1,16 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es2020",
+        "strict": true,
+        "declaration": false,
+        "sourceMap": true,
+        "noEmit": true,
+        "baseUrl": ".",
+        "paths": {
+            "typescript_bazel_minimal/*": [
+                "./*"
+            ]
+        }
+    }
+}
