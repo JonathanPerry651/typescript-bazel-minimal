@@ -4,6 +4,13 @@
     "devDependencies": {
         "typescript": "5.7.2",
         "@types/node": "22.10.1",
-        "http-server": "14.1.1"
+        "http-server": "14.1.1",
+        "@types/react": "18.2.0",
+        "@types/react-dom": "18.2.0",
+        "@types/scheduler": "0.16.2"
+    },
+    "dependencies": {
+        "react": "18.2.0",
+        "react-dom": "18.2.0"
     }
 }
