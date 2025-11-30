@@ -1,23 +1,34 @@
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 ts_project(
+    # The name of the target
     name = "calculator",
+    # The source files
     srcs = ["index.ts"],
+    # Use the build-specific tsconfig
     tsconfig = "//:tsconfig_build",
+    # Enable source maps
     source_map = True,
+    # Generate .d.ts files
     declaration = True,
+    # Use 'tsc' to transpile
     transpiler = "tsc",
+    # Make this target visible to other packages
     visibility = ["//visibility:public"],
 )
 
 load("@aspect_rules_js//npm:defs.bzl", "npm_package")
 
 npm_package(
+    # The name of the package target
     name = "pkg",
+    # The npm package name
     package = "@myorg/calculator",
+    # Files to include in the package
     srcs = [
         "package.json",
         ":calculator",
     ],
+    # Make this target visible
     visibility = ["//visibility:public"],
 )

@@ -1,25 +1,33 @@
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 ts_project(
+    # The name of the target, used to reference it in other rules (e.g. //src:index)
     name = "index",
+    # The source files to compile
     srcs = ["index.tsx"],
-    source_map = True,
+    # Generate .d.ts files so that other targets can depend on this one
     declaration = True,
+    # Enable source maps for debugging in the browser
+    source_map = True,
+    # Explicitly use 'tsc' as the transpiler to ensure 1:1 .js output
+    transpiler = "tsc",
+    # Use the build-specific tsconfig which enables declaration generation
     tsconfig = "//:tsconfig_build",
+    # Dependencies required for compilation
     deps = [
         "//:node_modules/react",
         "//:node_modules/react-dom",
         "//:node_modules/@types/react",
         "//:node_modules/@types/react-dom",
         "//:node_modules/@types/scheduler",
+        # Depend on the linked calculator package
         "//:node_modules/@myorg/calculator",
     ],
-    transpiler = "tsc",
-
 )
 
 filegroup(
     name = "assets",
+    # Files to be served by the web server
     srcs = [
         "index.html",
         ":index",
@@ -27,12 +35,12 @@ filegroup(
     ],
 )
 
-
-
 java_binary(
     name = "java_server",
     srcs = ["SimpleWebServer.java"],
-    main_class = "src.SimpleWebServer",
+    # Runtime dependencies (assets) to be available to the binary
     data = [":assets"],
+    # The main class to execute
+    main_class = "src.SimpleWebServer",
     visibility = ["//visibility:public"],
 )
