@@ -26,3 +26,10 @@ sh_binary(
     srcs = ["server.sh"],
     data = [":assets"],
 )
+
+java_binary(
+    name = "java_server",
+    srcs = ["SimpleWebServer.java"],
+    main_class = "src.SimpleWebServer",
+    data = [":assets"],
+)
