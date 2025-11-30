@@ -21,13 +21,24 @@ bazel build //src:index
 ```
 
 ## Project Structure
-- `MODULE.bazel`: Bazel dependencies and extensions.
+- `MODULE.bazel`: Bazel dependencies and extensions (Bzlmod).
 - `.bazelrc`: Bazel configuration flags.
-- `BUILD.bazel`: Root build file, exports config files.
-- `tsconfig.json`: TypeScript configuration.
-- `src/`: Source code.
-  - `index.ts`: TypeScript entry point.
-  - `BUILD.bazel`: Build target for `index.ts`.
+- `BUILD.bazel`: Root build file, exports config files and defines root targets.
+- `tsconfig.json`: TypeScript configuration for the IDE.
+- `tsconfig.build.json`: TypeScript configuration for Bazel builds (enables emission).
+- `cypress.config.js`: Cypress configuration file.
+- `src/`: Application source code.
+  - `index.tsx`: React application entry point.
+  - `index.html`: HTML template with JSPM import map.
+  - `SimpleWebServer.java`: Hermetic Java web server for testing.
+  - `BUILD.bazel`: Build targets for the app and server.
+- `cypress/`: Cypress test files.
+  - `e2e/`: End-to-end test specifications.
+  - `support/`: Cypress support files and commands.
+  - `tsconfig.json`: TypeScript config for Cypress tests.
+- `e2e/`: Bazel test targets for end-to-end testing.
+  - `BUILD.bazel`: Defines the `cypress_test` and `sh_test` targets.
+  - `test_wrapper.sh`: Script to manage server lifecycle during tests.
 
 ## Notes
 - This example is configured for **React** and **JavaScript emission**.

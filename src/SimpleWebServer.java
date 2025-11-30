@@ -14,11 +14,11 @@ public class SimpleWebServer {
     public static void main(String[] args) throws IOException {
         int port = 8080;
         HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
-        
+
         // Serve files from the current directory (runfiles root)
         // We expect assets to be under src/
         server.createContext("/", new FileHandler("src"));
-        
+
         server.setExecutor(null); // creates a default executor
         System.out.println("Serving HTTP on port " + port);
         server.start();
@@ -37,9 +37,18 @@ public class SimpleWebServer {
             if (path.equals("/")) {
                 path = "/index.html";
             }
-            
+
             File file = new File(rootDir + path);
             if (file.exists() && !file.isDirectory()) {
+                String contentType = "application/octet-stream";
+                if (path.endsWith(".html")) {
+                    contentType = "text/html";
+                } else if (path.endsWith(".js")) {
+                    contentType = "application/javascript";
+                } else if (path.endsWith(".css")) {
+                    contentType = "text/css";
+                }
+                t.getResponseHeaders().set("Content-Type", contentType);
                 t.sendResponseHeaders(200, file.length());
                 OutputStream os = t.getResponseBody();
                 Files.copy(file.toPath(), os);

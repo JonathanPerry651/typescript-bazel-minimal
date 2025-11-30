@@ -7,7 +7,8 @@
         "http-server": "14.1.1",
         "@types/react": "18.2.0",
         "@types/react-dom": "18.2.0",
-        "@types/scheduler": "0.16.2"
+        "@types/scheduler": "0.16.2",
+        "cypress": "13.6.1"
     },
     "dependencies": {
         "react": "18.2.0",

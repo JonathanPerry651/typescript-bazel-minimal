@@ -1,0 +1,21 @@
+load("@aspect_rules_cypress//cypress:defs.bzl", "cypress_test")
+
+cypress_test(
+    name = "cypress_runner",
+    data = [
+        "//:cypress_files",
+        "//:node_modules/typescript",
+    ],
+    args = ["run", "--config-file", "cypress.config.js"],
+    tags = ["manual", "requires-network"],
+)
+
+sh_test(
+    name = "test",
+    srcs = ["test_wrapper.sh"],
+    data = [
+        ":cypress_runner",
+        "//src:java_server",
+    ],
+    tags = ["requires-network", "local"],
+)

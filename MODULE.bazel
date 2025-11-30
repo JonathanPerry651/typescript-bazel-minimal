@@ -5,6 +5,7 @@ module(
 
 bazel_dep(name = "aspect_rules_ts", version = "3.3.2")
 bazel_dep(name = "aspect_rules_js", version = "2.1.3")
+bazel_dep(name = "aspect_rules_cypress", version = "0.7.2")
 bazel_dep(name = "rules_nodejs", version = "6.3.3")
 
 npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm", dev_dependency = True)
@@ -21,3 +22,8 @@ use_repo(pnpm, "pnpm")
 rules_ts_ext = use_extension("@aspect_rules_ts//ts:extensions.bzl", "ext")
 rules_ts_ext.deps()
 use_repo(rules_ts_ext, "npm_typescript")
+
+cypress = use_extension("@aspect_rules_cypress//cypress:extensions.bzl", "cypress")
+cypress.toolchain(cypress_version = "13.6.1")
+use_repo(cypress, "cypress_toolchains")
+register_toolchains("@cypress_toolchains//:all")
