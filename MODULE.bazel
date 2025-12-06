@@ -4,7 +4,7 @@ module(
 )
 
 bazel_dep(name = "aspect_rules_ts", version = "3.3.2")
-bazel_dep(name = "aspect_rules_js", version = "2.1.3")
+bazel_dep(name = "aspect_rules_js", version = "2.7.0")
 bazel_dep(name = "aspect_rules_cypress", version = "0.7.2")
 bazel_dep(name = "rules_nodejs", version = "6.3.3")
 
@@ -13,6 +13,16 @@ npm.npm_translate_lock(
     name = "npm",
     pnpm_lock = "//:pnpm-lock.yaml",
     verify_node_modules_ignored = "//:.bazelignore",
+)
+npm.npm_import(
+    name = "grpc-web",
+    package = "grpc-web",
+    version = "1.5.0",
+)
+npm.npm_import(
+    name = "google-protobuf",
+    package = "google-protobuf",
+    version = "3.21.2",
 )
 use_repo(npm, "npm")
 
@@ -27,3 +37,31 @@ cypress = use_extension("@aspect_rules_cypress//cypress:extensions.bzl", "cypres
 cypress.toolchain(cypress_version = "13.6.1")
 use_repo(cypress, "cypress_toolchains")
 register_toolchains("@cypress_toolchains//:all")
+
+bazel_dep(name = "rules_proto", version = "7.1.0")
+bazel_dep(name = "toolchains_protoc", version = "0.5.0")
+
+protoc = use_extension("@toolchains_protoc//protoc:extensions.bzl", "protoc")
+protoc.toolchain(
+    google_protobuf = "com_google_protobuf",
+    version = "v25.3",
+)
+use_repo(protoc, "com_google_protobuf", "toolchains_protoc_hub")
+
+register_toolchains("@toolchains_protoc_hub//:all")
+
+bazel_dep(name = "rules_jvm_external", version = "6.7")
+bazel_dep(name = "rules_proto_grpc_java", version = "5.0.0")
+bazel_dep(name = "rules_proto_grpc_js", version = "5.8.0")
+
+maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+maven.install(
+    artifacts = [
+        "io.grpc:grpc-netty-shaded:1.64.0",
+        "io.grpc:grpc-protobuf:1.64.0",
+        "io.grpc:grpc-stub:1.64.0",
+        "javax.annotation:javax.annotation-api:1.3.2",
+    ],
+    lock_file = "//:maven_install.json",
+)
+use_repo(maven, "maven")

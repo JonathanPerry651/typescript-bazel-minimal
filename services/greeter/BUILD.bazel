@@ -1,0 +1,17 @@
+load("@rules_jvm_external//:defs.bzl", "artifact")
+
+java_binary(
+    name = "server",
+    srcs = ["GreeterServer.java"],
+    main_class = "services.greeter.GreeterServer",
+    deps = [
+        "//proto:helloworld_java_proto",
+        "//proto:helloworld_java_grpc",
+        "@maven//:io_grpc_grpc_api",
+        "@maven//:io_grpc_grpc_netty_shaded",
+        "@maven//:io_grpc_grpc_protobuf",
+        "@maven//:io_grpc_grpc_stub",
+        "@maven//:javax_annotation_javax_annotation_api",
+    ],
+    visibility = ["//visibility:public"],
+)

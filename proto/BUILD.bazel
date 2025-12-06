@@ -1,0 +1,26 @@
+load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+proto_library(
+    name = "helloworld_proto",
+    srcs = ["helloworld.proto"],
+)
+
+java_proto_library(
+    name = "helloworld_java_proto",
+    deps = [":helloworld_proto"],
+)
+
+java_grpc_library(
+    name = "helloworld_java_grpc",
+    protos = [":helloworld_proto"],
+    deps = [":helloworld_java_proto"],
+)
+
+load("@rules_proto_grpc_js//:defs.bzl", "js_grpc_web_library")
+
+js_grpc_web_library(
+    name = "helloworld_js_grpc_web",
+    protos = [":helloworld_proto"],
+)

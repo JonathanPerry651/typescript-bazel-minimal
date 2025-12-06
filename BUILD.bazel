@@ -47,3 +47,13 @@ npm_link_package(
     name = "node_modules/@myorg/calculator",
     src = "//packages/calculator:pkg",
 )
+
+npm_link_package(
+    name = "node_modules/grpc-web",
+    src = "@npm//grpc-web",
+)
+
+npm_link_package(
+    name = "node_modules/google-protobuf",
+    src = "@npm//google-protobuf",
+)

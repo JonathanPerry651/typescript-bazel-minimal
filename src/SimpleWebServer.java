@@ -42,6 +42,8 @@ public class SimpleWebServer {
                 path = "/src/index.js.map";
             }
 
+            System.out.println(path);
+
             File file = new File("." + path);
             if (file.exists() && !file.isDirectory()) {
                 String contentType = "application/octet-stream";
