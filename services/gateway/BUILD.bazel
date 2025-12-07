@@ -1,0 +1,52 @@
+load("@rules_pkg//:pkg.bzl", "pkg_tar")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_image_index", "oci_tarball")
+
+java_binary(
+    name = "gateway",
+    srcs = ["GatewayServer.java"],
+    main_class = "services.gateway.GatewayServer",
+    deps = [
+        "//proto:helloworld_java_proto",
+        "//proto:helloworld_java_grpc",
+        "@maven//:io_grpc_grpc_api",
+        "@maven//:io_grpc_grpc_netty_shaded",
+        "@maven//:io_grpc_grpc_protobuf",
+        "@maven//:io_grpc_grpc_stub",
+        "@maven//:javax_annotation_javax_annotation_api",
+        "@maven//:com_google_code_findbugs_jsr305",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+pkg_tar(
+    name = "app_layer",
+    srcs = [":gateway_deploy.jar"],
+    package_dir = "/app",
+)
+
+pkg_tar(
+    name = "static_layer",
+    srcs = glob(["static/**"]) + [
+        "//packages/calculator:bundle",
+    ],
+    package_dir = "/app/static",
+)
+
+oci_image(
+    name = "image",
+    base = "@distroless_java",
+    entrypoint = ["java", "-jar", "/app/gateway_deploy.jar"],
+    tars = [":app_layer", ":static_layer"],
+)
+
+oci_image_index(
+    name = "image_index",
+    images = [":image"],
+)
+
+genrule(
+    name = "tarball",
+    srcs = [":image_index"],
+    outs = ["gateway.tar"],
+    cmd = "tar -C $(location :image_index) -cf $@ .",
+)

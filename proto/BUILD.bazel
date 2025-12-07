@@ -24,3 +24,24 @@ js_grpc_web_library(
     name = "helloworld_js_grpc_web",
     protos = [":helloworld_proto"],
 )
+
+proto_library(
+    name = "calculator_proto",
+    srcs = ["calculator.proto"],
+)
+
+java_proto_library(
+    name = "calculator_java_proto",
+    deps = [":calculator_proto"],
+)
+
+java_grpc_library(
+    name = "calculator_java_grpc",
+    protos = [":calculator_proto"],
+    deps = [":calculator_java_proto"],
+)
+
+js_grpc_web_library(
+    name = "calculator_js_grpc_web",
+    protos = [":calculator_proto"],
+)

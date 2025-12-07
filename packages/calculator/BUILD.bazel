@@ -1,34 +1,33 @@
+load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 ts_project(
-    # The name of the target
-    name = "calculator",
-    # The source files
+    name = "lib",
     srcs = ["index.ts"],
-    # Use the build-specific tsconfig
-    tsconfig = "//:tsconfig_build",
-    # Enable source maps
-    source_map = True,
-    # Generate .d.ts files
     declaration = True,
-    # Use 'tsc' to transpile
+    deps = [
+        "//proto:helloworld_js_grpc_web",
+        "//proto:calculator_js_grpc_web",
+        "//:node_modules/grpc-web",
+        "//:node_modules/@types/google-protobuf",
+    ],
+    source_map = True,
+    tsconfig = "//:tsconfig_build",
     transpiler = "tsc",
-    # Make this target visible to other packages
-    visibility = ["//visibility:public"],
 )
 
-load("@aspect_rules_js//npm:defs.bzl", "npm_package")
-
-npm_package(
-    # The name of the package target
-    name = "pkg",
-    # The npm package name
-    package = "@myorg/calculator",
-    # Files to include in the package
-    srcs = [
-        "package.json",
-        ":calculator",
+esbuild(
+    name = "bundle",
+    entry_point = "index.js",
+    srcs = [":lib"],
+    deps = [
+        "//proto:helloworld_js_grpc_web",
+        "//proto:calculator_js_grpc_web",
+        "//:node_modules/google-protobuf",
+        "//:node_modules/grpc-web",
     ],
-    # Make this target visible
+    bundle = True,
+    minify = True,
+    tsconfig = "//:tsconfig_build",
     visibility = ["//visibility:public"],
 )

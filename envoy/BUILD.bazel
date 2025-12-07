@@ -1,0 +1,27 @@
+load("@rules_pkg//:pkg.bzl", "pkg_tar")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_image_index", "oci_tarball")
+
+pkg_tar(
+    name = "config_layer",
+    srcs = ["envoy.yaml"],
+    package_dir = "/etc/envoy",
+)
+
+oci_image(
+    name = "image",
+    base = "@envoy_distroless",
+    tars = [":config_layer"],
+    entrypoint = ["envoy", "-c", "/etc/envoy/envoy.yaml"],
+)
+
+oci_image_index(
+    name = "image_index",
+    images = [":image"],
+)
+
+genrule(
+    name = "tarball",
+    srcs = [":image_index"],
+    outs = ["envoy.tar"],
+    cmd = "tar -C $(location :image_index) -cf $@ .",
+)

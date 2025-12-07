@@ -15,3 +15,31 @@ java_binary(
     ],
     visibility = ["//visibility:public"],
 )
+
+load("@rules_pkg//:pkg.bzl", "pkg_tar")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_image_index", "oci_tarball")
+
+pkg_tar(
+    name = "layer",
+    srcs = [":server_deploy.jar"],
+    package_dir = "/app",
+)
+
+oci_image(
+    name = "image",
+    base = "@distroless_java",
+    entrypoint = ["java", "-jar", "/app/server_deploy.jar"],
+    tars = [":layer"],
+)
+
+oci_image_index(
+    name = "image_index",
+    images = [":image"],
+)
+
+genrule(
+    name = "tarball",
+    srcs = [":image_index"],
+    outs = ["greeter.tar"],
+    cmd = "tar -C $(location :image_index) -cf $@ .",
+)

@@ -1,21 +1,28 @@
-load("@aspect_rules_cypress//cypress:defs.bzl", "cypress_test")
+load("@npm//:@playwright/test/package_json.bzl", "bin")
 
-cypress_test(
-    name = "cypress_runner",
-    data = [
-        "//:cypress_files",
-        "//:node_modules/typescript",
+bin.playwright_test(
+    name = "test",
+    args = [
+        "test",
+        "--config=playwright.config.ts",
     ],
-    args = ["run", "--config-file", "cypress.config.js"],
-    tags = ["manual", "requires-network"],
+    data = [
+        "playwright.config.ts",
+        "example.spec.ts",
+        "//:node_modules/@playwright/test",
+        "//:node_modules/playwright",
+    ],
+    tags = ["no-sandbox"],
+    chdir = "e2e",
+    visibility = ["//visibility:public"],
 )
 
-sh_test(
-    name = "test",
-    srcs = ["test_wrapper.sh"],
+bin.playwright_binary(
+    name = "install_browsers",
+    args = ["install"],
     data = [
-        ":cypress_runner",
-        "//src:java_server",
+        "//:node_modules/@playwright/test",
+        "//:node_modules/playwright",
     ],
-    tags = ["requires-network", "local"],
+    tags = ["no-sandbox"],
 )

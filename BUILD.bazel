@@ -18,26 +18,7 @@ exports_files([
     "tsconfig.json",
     "package.json",
     "pnpm-lock.yaml",
-    "cypress.config.js",
-    "cypress/support/e2e.ts",
-    "cypress/support/commands.ts",
-    "cypress/e2e/spec.cy.ts",
 ])
-
-load("@aspect_rules_js//js:defs.bzl", "js_library")
-
-js_library(
-    name = "cypress_files",
-    srcs = [
-        "tsconfig.json",
-        "cypress/tsconfig.json",
-        "cypress.config.js",
-        "cypress/support/e2e.ts",
-        "cypress/support/commands.ts",
-        "cypress/e2e/spec.cy.ts",
-    ],
-    visibility = ["//visibility:public"],
-)
 
 npm_link_all_packages(name = "node_modules")
 
@@ -48,12 +29,4 @@ npm_link_package(
     src = "//packages/calculator:pkg",
 )
 
-npm_link_package(
-    name = "node_modules/grpc-web",
-    src = "@npm//grpc-web",
-)
 
-npm_link_package(
-    name = "node_modules/google-protobuf",
-    src = "@npm//google-protobuf",
-)

@@ -1,0 +1,41 @@
+load("@rules_java//java:defs.bzl", "java_binary")
+load("@rules_pkg//:pkg.bzl", "pkg_tar")
+load("@rules_oci//oci:defs.bzl", "oci_image", "oci_image_index", "oci_tarball")
+
+java_binary(
+    name = "server",
+    srcs = ["CalculatorServer.java"],
+    main_class = "services.calculator.CalculatorServer",
+    deps = [
+        "//proto:calculator_java_proto",
+        "//proto:calculator_java_grpc",
+        "@maven//:io_grpc_grpc_api",
+        "@maven//:io_grpc_grpc_stub",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+pkg_tar(
+    name = "layer",
+    srcs = [":server_deploy.jar"],
+    package_dir = "/app",
+)
+
+oci_image(
+    name = "image",
+    base = "@distroless_java",
+    entrypoint = ["java", "-jar", "/app/server_deploy.jar"],
+    tars = [":layer"],
+)
+
+oci_image_index(
+    name = "image_index",
+    images = [":image"],
+)
+
+genrule(
+    name = "tarball",
+    srcs = [":image_index"],
+    outs = ["calculator.tar"],
+    cmd = "tar -C $(location :image_index) -cf $@ .",
+)

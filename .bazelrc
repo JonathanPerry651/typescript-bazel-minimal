@@ -1,7 +1,6 @@
 common --enable_bzlmod
 common --@aspect_rules_ts//ts:skipLibCheck=honor_tsconfig
 build --symlink_prefix=/
-build --action_env=SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk
-build --cxxopt='-isystem/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1'
-build --host_cxxopt='-isystem/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/include/c++/v1'
+
 build --noincompatible_disallow_ctx_resolve_tools
+build --java_runtime_version=remotejdk_21

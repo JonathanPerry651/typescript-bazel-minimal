@@ -1,114 +1,102 @@
-# Minimal TypeScript Bazel Example
+# TypeScript Bazel Minimal Example
 
-This repository demonstrates a completely minimal setup for TypeScript with Bazel using `aspect_rules_ts`, `aspect_rules_js`, and `rules_nodejs`.
+This repository demonstrates a full-stack microservices application built with **Bazel**, **TypeScript**, **Java gRPC**, and **Envoy**. It features a custom API Gateway that implements header-based dynamic routing to multiple backend services.
 
-## Features
-- **Bazel-managed Tooling**: Node.js, pnpm, and TypeScript are managed by Bazel (hermetic).
-- **Type Checking**: Configured for type-checking using `ts_project`.
-- **Minimal Config**: Only essential configuration files are included.
+## Architecture
+
+The system uses a sidecar/gateway pattern running within a Kubernetes cluster (Kind).
+
+```mermaid
+graph LR
+    Client[Client (Browser)] -->|gRPC-Web :8080| Envoy[Envoy Proxy]
+    Envoy -->|gRPC :9000| Gateway[Gateway Server]
+    
+    subgraph Backends
+        Gateway -->|Header: greeter| Greeter[Greeter Service :9090]
+        Gateway -->|Header: calculator| Calculator[Calculator Service :9091]
+    end
+
+    style Client fill:#f9f,stroke:#333,stroke-width:2px
+    style Gateway fill:#ccf,stroke:#333
+    style Greeter fill:#bfb,stroke:#333
+    style Calculator fill:#bfb,stroke:#333
+```
+
+### Components
+
+1.  **Frontend (`packages/calculator`)**:
+    *   A TypeScript web application compiled with `ts_project` and bundled with `esbuild`.
+    *   Uses `grpc-web` to communicate with backends.
+    *   **Interceptor**: Adds a custom `x-backend-target` header ('greeter' or 'calculator') to every request to determine the destination.
+
+2.  **Gateway Service (`services/gateway`)**:
+    *   A Java-based reverse proxy and static asset server.
+    *   **Static Assets**: Serves the compiled frontend bundle on port `8000`.
+    *   **gRPC Proxy**: Listens on port `9000`. It inspects the `x-backend-target` header of incoming requests and dynamically routes the stream to the appropriate backend channel (`greeter` or `calculator`).
+    *   **Flow Control**: Implements manual flow control to bridge the browser-client and backend-server streams.
+
+3.  **Backend Services**:
+    *   **Greeter (`services/greeter`)**: A standard Java gRPC service (Port `9090`). It echoes the `x-backend-target` header in its response for verification.
+    *   **Calculator (`services/calculator`)**: A Java gRPC service (Port `9091`) performing arithmetic operations.
+
+4.  **Envoy (`envoy`)**:
+    *   Edge proxy listening on port `8080`.
+    *   Handles **CORS** and **gRPC-Web** transcoding (converting HTTP/1.1 gRPC-Web to standard HTTP/2 gRPC).
+    *   Forwards all `/application*` traffic to the Gateway's gRPC port.
 
 ## Prerequisites
-- [Bazelisk](https://github.com/bazelbuild/bazelisk) (recommended) or Bazel 6.0+
 
-## Setup
-The repository uses Bzlmod (`MODULE.bazel`) for dependency management.
-Dependencies are defined in `package.json` and locked in `pnpm-lock.yaml`.
+*   **Bazel** (via `bazelisk`)
+*   **Podman** (or Docker)
+*   **Kind** (Kubernetes in Docker)
+*   **Kubectl**
 
-## Building
-To type-check the source code:
+## Directory Structure
+
+*   `packages/calculator`: Frontend TypeScript code (+ Protocol Buffer definitions).
+*   `services/gateway`: Java Gateway proxy implementation.
+*   `services/greeter`: Java Greeter backend.
+*   `services/calculator`: Java Calculator backend.
+*   `envoy`: Envoy proxy configuration (`envoy.yaml`).
+*   `proto`: Shared Protocol Buffer definitions (`helloworld.proto`, `calculator.proto`).
+*   `e2e`: Playwright end-to-end integration tests.
+*   `k8s`: Kubernetes deployment manifests (`deployment.yaml`).
+
+## Usage
+
+### 1. Build
+Build the entire repository, including Docker images (tarballs) for services:
 ```bash
-bazel build //src:index
+bazel build //...
 ```
 
-## Project Structure
-- `MODULE.bazel`: Bazel dependencies and extensions (Bzlmod).
-- `.bazelrc`: Bazel configuration flags.
-- `BUILD.bazel`: Root build file, exports config files and defines root targets.
-- `tsconfig.json`: TypeScript configuration for the IDE.
-- `tsconfig.build.json`: TypeScript configuration for Bazel builds (enables emission).
-- `cypress.config.js`: Cypress configuration file.
-- `src/`: Application source code.
-  - `index.tsx`: React application entry point.
-  - `index.html`: HTML template with JSPM import map.
-  - `SimpleWebServer.java`: Hermetic Java web server for testing.
-  - `BUILD.bazel`: Build targets for the app and server.
-- `cypress/`: Cypress test files.
-  - `e2e/`: End-to-end test specifications.
-  - `support/`: Cypress support files and commands.
-  - `tsconfig.json`: TypeScript config for Cypress tests.
-- `e2e/`: Bazel test targets for end-to-end testing.
-  - `BUILD.bazel`: Defines the `cypress_test` and `sh_test` targets.
-  - `test_wrapper.sh`: Script to manage server lifecycle during tests.
+### 2. Deploy to Kind
+The `k8s/` directory contains the deployment configuration. The services are deployed into a single Pod with multiple containers for simplicity in this demo.
 
-## Notes
-- This example is configured for **React** and **JavaScript emission**.
-- `tsconfig.json` is set to `noEmit: true` for IDE support, but `tsconfig.build.json` enables emission for Bazel builds.
+**Manual Deployment Steps:**
+1.  **Build Tarballs**:
+    ```bash
+    bazel build //services/gateway:tarball //services/greeter:tarball //services/calculator:tarball //envoy:tarball
+    ```
+2.  **Load Images**: Load the generated tarballs into Kind (using `kind load image-archive` or `podman save` | `kind load`).
+3.  **Apply Manifest**:
+    ```bash
+    kubectl apply -f k8s/deployment.yaml
+    ```
 
-## Managing TypeScript Dependencies
-
-This guide explains how to add and manage TypeScript dependencies in this Bazel project.
-
-### 1. Add Dependencies to `package.json`
-
-Add your dependencies to `package.json` just like a normal Node.js project.
-
-```json
-{
-  "dependencies": {
-    "react": "18.2.0",
-    "react-dom": "18.2.0"
-  },
-  "devDependencies": {
-    "@types/react": "18.2.0",
-    "@types/react-dom": "18.2.0"
-  }
-}
-```
-
-### 2. Update the Lockfile
-
-After modifying `package.json`, you must update `pnpm-lock.yaml`. **Do not run `pnpm install` or `npm install` directly on your machine.** Instead, use the Bazel-managed pnpm tool to ensure consistency.
-
-Run the following command from the workspace root:
+### 3. Test
+Run the end-to-end tests using Playwright. This target will automatically set up the test environment (if configured) or run against the active cluster.
 
 ```bash
-bazel run @pnpm//:pnpm -- install --dir $PWD
+bazel test //e2e:test
 ```
 
-This command runs `pnpm install` inside the Bazel environment but writes the changes back to your workspace (`$PWD`).
+The tests verify:
+1.  Frontend loads from Gateway.
+2.  "Say Hello" button routes to **Greeter** (verifying header echo).
+3.  "Calculate" button routes to **Calculator** (verifying correct arithmetic).
 
-### 3. Expose Dependencies in `BUILD.bazel`
+## Key Implementation Details
 
-To use the new dependencies in your TypeScript code, you must add them to the `deps` attribute of your `ts_project` rule in `src/BUILD.bazel`.
-
-The dependencies are available under the `//:node_modules` package.
-
-```starlark
-ts_project(
-    name = "index",
-    srcs = ["index.tsx"],
-    deps = [
-        "//:node_modules/react",
-        "//:node_modules/react-dom",
-        "//:node_modules/@types/react",
-        "//:node_modules/@types/react-dom",
-    ],
-    ...
-)
-```
-
-### Troubleshooting
-
-#### "Cannot find module" errors
-If you see errors like `Cannot find module 'foo'`, ensure that:
-1. The package is in `package.json`.
-2. The lockfile is updated.
-3. The package is listed in `deps` in `BUILD.bazel`.
-4. If it's a type definition (e.g., `@types/foo`), it must also be in `deps`.
-
-#### "Repository ... is not defined"
-If you encounter Bazel errors about missing repositories after updating dependencies, try cleaning the cache:
-
-```bash
-bazel clean --expunge
-```
+*   **Header-Based Routing**: The core logic resides in `GatewayServer.java`. A `ServerInterceptor` extracts the `x-backend-target` header and places the corresponding `ManagedChannel` into the gRPC `Context`. A custom `ServerCallHandler` then proxies the request messages, headers, and flow control signals to the selected channel.
+*   **Bidi Proxying**: The Gateway implements full bidirectional streaming proxy logic, ensuring that client cancellations, flow control demand, and response trailers are correctly propagated.
