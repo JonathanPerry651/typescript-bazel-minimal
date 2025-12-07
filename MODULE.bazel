@@ -57,12 +57,20 @@ bazel_dep(name = "rules_proto_grpc_js", version = "5.8.0")
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
 maven.install(
     artifacts = [
-        "io.grpc:grpc-netty-shaded:1.64.0",
-        "io.grpc:grpc-protobuf:1.64.0",
-        "io.grpc:grpc-stub:1.64.0",
+        "io.grpc:grpc-api:1.63.0",
+        "io.grpc:grpc-core:1.63.0",
+        "io.grpc:grpc-context:1.63.0",
+        "io.grpc:grpc-netty-shaded:1.63.0",
+        "io.grpc:grpc-protobuf:1.63.0",
+        "io.grpc:grpc-stub:1.63.0",
+        "io.grpc:grpc-testing:1.63.0",
+        "io.grpc:grpc-inprocess:1.63.0",
         "javax.annotation:javax.annotation-api:1.3.2",
+        "junit:junit:4.13.2",
+        "com.google.truth:truth:1.4.2",
     ],
     lock_file = "//:maven_install.json",
+    resolver = "maven",
 )
 use_repo(maven, "maven")
 

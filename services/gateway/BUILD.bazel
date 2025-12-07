@@ -3,18 +3,8 @@ load("@rules_oci//oci:defs.bzl", "oci_image", "oci_image_index", "oci_tarball")
 
 java_binary(
     name = "gateway",
-    srcs = ["GatewayServer.java"],
     main_class = "services.gateway.GatewayServer",
-    deps = [
-        "//proto:helloworld_java_proto",
-        "//proto:helloworld_java_grpc",
-        "@maven//:io_grpc_grpc_api",
-        "@maven//:io_grpc_grpc_netty_shaded",
-        "@maven//:io_grpc_grpc_protobuf",
-        "@maven//:io_grpc_grpc_stub",
-        "@maven//:javax_annotation_javax_annotation_api",
-        "@maven//:com_google_code_findbugs_jsr305",
-    ],
+    runtime_deps = [":gateway_lib"],
     visibility = ["//visibility:public"],
 )
 
@@ -49,4 +39,44 @@ genrule(
     srcs = [":image_index"],
     outs = ["gateway.tar"],
     cmd = "tar -C $(location :image_index) -cf $@ .",
+)
+
+java_test(
+    name = "GatewayServerTest",
+    srcs = ["GatewayServerTest.java"],
+    test_class = "services.gateway.GatewayServerTest",
+    deps = [
+        ":gateway_deploy.jar", # Use the deploy jar to get all deps, or list them explicitly? 
+        # Better to list source and deps explicitly or depend on a java_library. 
+        # But gateway is a binary. I should probably extract a java_library.
+        # For now, I'll rely on the source file being in the same package (if I move it).
+        # Actually, let's just make gateway a java_library + java_binary.
+        ":gateway_lib",
+        "//proto:helloworld_java_proto",
+        "//proto:helloworld_java_grpc",
+        "//proto:calculator_java_proto",
+        "//proto:calculator_java_grpc",
+        "@maven//:io_grpc_grpc_api",
+        "@maven//:io_grpc_grpc_core",
+        "@maven//:io_grpc_grpc_testing",
+        "@maven//:io_grpc_grpc_inprocess",
+        "@maven//:io_grpc_grpc_stub",
+        "@maven//:junit_junit",
+        "@maven//:com_google_truth_truth",
+    ],
+)
+
+java_library(
+    name = "gateway_lib",
+    srcs = ["GatewayServer.java"],
+    deps = [
+        "//proto:helloworld_java_proto",
+        "//proto:helloworld_java_grpc",
+        "@maven//:io_grpc_grpc_api",
+        "@maven//:io_grpc_grpc_netty_shaded",
+        "@maven//:io_grpc_grpc_protobuf",
+        "@maven//:io_grpc_grpc_stub",
+        "@maven//:javax_annotation_javax_annotation_api",
+        "@maven//:com_google_code_findbugs_jsr305",
+    ],
 )

@@ -53,30 +53,7 @@ public class GatewayServer {
         channelMap.put("greeter", greeterChannel);
         channelMap.put("calculator", calculatorChannel);
 
-        // We use an interceptor to orchestrate routing
-        ServerInterceptor routingInterceptor = new ServerInterceptor() {
-            @Override
-            public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
-                    ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
-                
-                String target = headers.get(TARGET_HEADER_KEY);
-                logger.info("Orchestration header x-backend-target: " + target);
-
-                ManagedChannel selected = greeterChannel; // default
-                if (target != null && channelMap.containsKey(target)) {
-                    selected = channelMap.get(target);
-                }
-
-                Context ctx = Context.current().withValue(ORCHESTRATION_TARGET_CHANNEL, selected);
-                return Contexts.interceptCall(ctx, call, headers, next);
-            }
-        };
-
-        Server grpcServer = ServerBuilder.forPort(GRPC_PORT)
-                .intercept(routingInterceptor) // Global interceptor
-                .fallbackHandlerRegistry(new GenericProxyRegistry())
-                .build()
-                .start();
+        Server grpcServer = createGrpcServer(ServerBuilder.forPort(GRPC_PORT), channelMap).start();
 
         logger.info("Generic gRPC Proxy Server started on port " + GRPC_PORT);
         
@@ -86,6 +63,44 @@ public class GatewayServer {
         }));
 
         grpcServer.awaitTermination();
+    }
+
+    public static Server buildGrpcServer(ServerBuilder<?> serverBuilder, Map<String, ManagedChannel> channelMap) {
+        // We use an interceptor to orchestrate routing
+        ServerInterceptor routingInterceptor = new ServerInterceptor() {
+            @Override
+            public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(
+                    ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {
+                
+                String target = headers.get(TARGET_HEADER_KEY);
+                logger.info("Orchestration header x-backend-target: " + target);
+
+                ManagedChannel selected = channelMap.values().stream().findFirst().orElse(null); // Default to first available or null logic
+                // Replicate original logic: default to the one named "greeter" if available, or first?
+                // Original logic: "ManagedChannel selected = greeterChannel;"
+                if (channelMap.containsKey("greeter")) {
+                    selected = channelMap.get("greeter");
+                }
+                
+                if (target != null && channelMap.containsKey(target)) {
+                    selected = channelMap.get(target);
+                }
+
+                Context ctx = Context.current().withValue(ORCHESTRATION_TARGET_CHANNEL, selected);
+                return Contexts.interceptCall(ctx, call, headers, next);
+            }
+        };
+
+        return serverBuilder
+                .intercept(routingInterceptor) // Global interceptor
+                .fallbackHandlerRegistry(new GenericProxyRegistry())
+                .build();
+    }
+
+    // Deprecated wrapper to match signature if needed, or just inline in main.
+    // I renamed it to buildGrpcServer to be clear it returns a built (but not started) server.
+    private static Server createGrpcServer(ServerBuilder<?> serverBuilder, Map<String, ManagedChannel> channelMap) {
+        return buildGrpcServer(serverBuilder, channelMap);
     }
 
     // Registry resolves ANY method, relying on Context for channel selection
@@ -163,6 +178,7 @@ public class GatewayServer {
 
                 @Override
                 public void onClose(Status status, Metadata trailers) {
+                    logger.info("Gateway ClientCall closed: " + status);
                     serverCall.close(status, trailers);
                 }
             }, headers); // Forward REQUEST headers here
@@ -181,7 +197,13 @@ public class GatewayServer {
 
                 @Override
                 public void onHalfClose() {
-                    clientCall.halfClose();
+                    try {
+                        clientCall.halfClose();
+                    } catch (Throwable t) {
+                        System.err.println("CRASH in onHalfClose: " + t);
+                        t.printStackTrace();
+                        throw t;
+                    }
                 }
 
                 @Override
