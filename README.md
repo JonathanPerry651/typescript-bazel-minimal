@@ -8,12 +8,12 @@ The system uses a sidecar/gateway pattern running within a Kubernetes cluster (K
 
 ```mermaid
 graph TD;
-    Client[Client (Browser)]-->|gRPC-Web :8080|Envoy[Envoy Proxy];
-    Envoy-->|gRPC :9000|Gateway[Gateway Server];
+    Client["Client (Browser)"]-->|gRPC-Web :8080|Envoy["Envoy Proxy"];
+    Envoy-->|gRPC :9000|Gateway["Gateway Server"];
     
     subgraph Backends
-        Gateway-->|Header: greeter|Greeter[Greeter Service :9090];
-        Gateway-->|Header: calculator|Calculator[Calculator Service :9091];
+        Gateway-->|Header: greeter|Greeter["Greeter Service :9090"];
+        Gateway-->|Header: calculator|Calculator["Calculator Service :9091"];
     end
 
     style Client fill:#f9f,stroke:#333,stroke-width:2px;
