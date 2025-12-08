@@ -4,30 +4,21 @@ test('has title and says hello', async ({ page }) => {
     await page.goto('http://localhost:8080');
 
     // Expect a title "to contain" a substring.
-    await expect(page.getByRole('heading', { name: 'Welcome to the Gateway' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'gRPC React Calculator' })).toBeVisible();
 
     page.on('console', msg => console.log(`Browser Console: ${msg.text()}`));
 
-    // Click the button and wait for the dialog
-    const dialogPromise = page.waitForEvent('dialog');
+    // Click the button and wait for the log to appear
     await page.getByRole('button', { name: 'Say Hello' }).click();
-    const dialog = await dialogPromise;
 
-    console.log(`Dialog message: ${dialog.message()}`);
-    if (dialog.message().includes('Response: Hello World')) {
-        expect(dialog.message()).toContain('Response: Hello World (Header: greeter)');
-        await dialog.accept();
+    // Check for Hello response in the logs
+    // The "Logs:" section is in a div. We look for a list item.
+    // Note: The backend adds "(Header: greeter)" to the message if the header is present.
+    await expect(page.getByText('Response: Hello World (Header: greeter)')).toBeVisible({ timeout: 5000 });
 
-        // Now test Calculator
-        const calcDialogPromise = page.waitForEvent('dialog');
-        await page.getByRole('button', { name: 'Calculate 10+20' }).click();
-        const calcDialog = await calcDialogPromise;
-        console.log(`Calc Dialog message: ${calcDialog.message()}`);
-        expect(calcDialog.message()).toContain('Sum Result: 30');
-        await calcDialog.accept();
-    } else {
-        // Fallback or error handling
-        console.error("Unexpected dialog: " + dialog.message());
-        await dialog.accept();
-    }
+    // Now test Calculator
+    await page.getByRole('button', { name: 'Calculate 10+20' }).click();
+
+    // Check for Sum response
+    await expect(page.getByText('Sum Result: 30')).toBeVisible({ timeout: 5000 });
 });

@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: gateway
-        image: localhost/gateway:latest
+        image: localhost/bazel/services/gateway:tarball
         imagePullPolicy: Never
         ports:
         - containerPort: 8000
