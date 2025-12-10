@@ -1,5 +1,7 @@
 syntax = "proto3";
 
+import "google/rpc/status.proto";
+
 package calculator;
 
 service Calculator {
@@ -13,4 +15,5 @@ message SumRequest {
 
 message SumReply {
     int32 result = 1;
+    google.rpc.Status status = 2;
 }

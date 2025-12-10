@@ -12,6 +12,9 @@ oci_image(
     base = "@envoy_distroless",
     tars = [":config_layer"],
     entrypoint = ["envoy", "-c", "/etc/envoy/envoy.yaml"],
+    annotations = {
+        "org.opencontainers.image.ref.name": "localhost/envoy:latest",
+    },
 )
 
 oci_image_index(
@@ -21,7 +24,14 @@ oci_image_index(
 
 genrule(
     name = "tarball",
-    srcs = [":image_index"],
+    srcs = [":image"],
     outs = ["envoy.tar"],
-    cmd = "tar -C $(location :image_index) -cf $@ .",
+    cmd = """
+        mkdir -p image_mod
+        cp -RL $(location :image)/* image_mod/
+        chmod -R u+w image_mod
+        python3 -c "import json; f='image_mod/index.json'; d=json.load(open(f)); d['manifests'][0]['annotations']={'org.opencontainers.image.ref.name':'localhost/envoy:latest'}; json.dump(d,open(f,'w'))"
+        tar -C image_mod -cf $@ .
+    """,
+    visibility = ["//visibility:public"],
 )

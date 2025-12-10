@@ -28,6 +28,7 @@ js_grpc_web_library(
 proto_library(
     name = "calculator_proto",
     srcs = ["calculator.proto"],
+    deps = ["@googleapis//google/rpc:status_proto"],
 )
 
 java_proto_library(
@@ -38,10 +39,16 @@ java_proto_library(
 java_grpc_library(
     name = "calculator_java_grpc",
     protos = [":calculator_proto"],
-    deps = [":calculator_java_proto"],
+    deps = [
+        ":calculator_java_proto",
+        "@maven//:com_google_api_grpc_proto_google_common_protos",
+    ],
 )
 
 js_grpc_web_library(
     name = "calculator_js_grpc_web",
-    protos = [":calculator_proto"],
+    protos = [
+        ":calculator_proto",
+        "@googleapis//google/rpc:status_proto",
+    ],
 )

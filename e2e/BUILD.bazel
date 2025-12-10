@@ -26,3 +26,32 @@ bin.playwright_binary(
     ],
     tags = ["no-sandbox"],
 )
+
+bin.playwright_binary(
+    name = "playwright_bin_test",
+    data = [
+        "//:node_modules/@playwright/test",
+        "//:node_modules/playwright",
+    ],
+    tags = ["no-sandbox"],
+)
+
+sh_test(
+    name = "kind_test",
+    srcs = ["kind_test.sh"],
+    data = [
+        "playwright.config.ts",
+        "example.spec.ts",
+        "//services/gateway:tarball",
+        "//services/greeter:tarball",
+        "//services/calculator:tarball",
+        "//envoy:tarball",
+        "//k8s:deployment.yaml",
+        "//bin:kind",
+        "//bin:kubectl",
+        "@bazel_tools//tools/bash/runfiles",
+        ":playwright_bin_test",
+    ],
+    tags = ["manual", "local", "exclusive"],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,18 @@
+load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
+
+ts_project(
+    name = "lib",
+    srcs = ["index.ts"],
+    declaration = True,
+    validate = False,
+    deps = [
+        "//proto:helloworld_js_grpc_web",
+        "//proto:calculator_js_grpc_web",
+        "//:node_modules/grpc-web",
+        "//:node_modules/@types/google-protobuf",
+    ],
+    tsconfig = "//:tsconfig_build",
+    transpiler = "tsc",
+    source_map = True,
+    visibility = ["//visibility:public"],
+)

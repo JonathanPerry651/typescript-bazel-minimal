@@ -1,41 +1,13 @@
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { GreeterPromiseClient } from '../../proto/helloworld_js_grpc_web_pb/proto/helloworld_grpc_web_pb';
-import { HelloRequest } from '../../proto/helloworld_js_grpc_web_pb/proto/helloworld_pb';
+import { HelloRequest } from 'typescript_bazel_minimal/proto/helloworld_js_grpc_web_pb/proto/helloworld_pb';
 import { RpcError, Metadata } from 'grpc-web';
+import { SumRequest } from 'typescript_bazel_minimal/proto/calculator_js_grpc_web_pb/proto/calculator_pb';
 
-import { CalculatorPromiseClient } from '../../proto/calculator_js_grpc_web_pb/proto/calculator_grpc_web_pb';
-import { SumRequest } from '../../proto/calculator_js_grpc_web_pb/proto/calculator_pb';
+import { greeterClient, calculatorClient } from '../../packages/grpc-client';
 
-const uri = 'http://localhost:8080/application/grpc-web';
-
-class TargetHeaderInterceptor {
-    constructor(private target: string) { }
-    intercept(request: any, invoker: any) {
-        const metadata = request.getMetadata();
-        metadata['x-backend-target'] = this.target;
-        return invoker(request);
-    }
-}
-
-class RoutedGreeterClient extends GreeterPromiseClient {
-    constructor(hostname: string) {
-        super(hostname, null, {
-            unaryInterceptors: [new TargetHeaderInterceptor('greeter')]
-        });
-    }
-}
-
-class RoutedCalculatorClient extends CalculatorPromiseClient {
-    constructor(hostname: string) {
-        super(hostname, null, {
-            unaryInterceptors: [new TargetHeaderInterceptor('calculator')]
-        });
-    }
-}
-
-const client = new RoutedGreeterClient(uri);
-const calcClient = new RoutedCalculatorClient(uri);
+const client = greeterClient;
+const calcClient = calculatorClient;
 
 const App = () => {
     const [messages, setMessages] = useState<string[]>([]);

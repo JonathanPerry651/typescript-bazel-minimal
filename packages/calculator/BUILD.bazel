@@ -6,6 +6,7 @@ ts_project(
     srcs = ["index.tsx"],
     declaration = True,
     deps = [
+        "//packages/grpc-client:lib",
         "//proto:helloworld_js_grpc_web",
         "//proto:calculator_js_grpc_web",
         "//:node_modules/grpc-web",
@@ -25,6 +26,7 @@ esbuild(
     entry_point = "index.js",
     srcs = [":lib"],
     deps = [
+        "//packages/grpc-client:lib",
         "//proto:helloworld_js_grpc_web",
         "//proto:calculator_js_grpc_web",
         "//:node_modules/google-protobuf",
@@ -36,4 +38,5 @@ esbuild(
     minify = True,
     tsconfig = "//:tsconfig_build",
     visibility = ["//visibility:public"],
+    config = "esbuild.config.js",
 )
