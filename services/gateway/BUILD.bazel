@@ -62,10 +62,10 @@ java_test(
         # For now, I'll rely on the source file being in the same package (if I move it).
         # Actually, let's just make gateway a java_library + java_binary.
         ":gateway_lib",
-        "//proto:helloworld_java_proto",
-        "//proto:helloworld_java_grpc",
-        "//proto:calculator_java_proto",
-        "//proto:calculator_java_grpc",
+        "//services/greeter/proto:helloworld_java_proto",
+        "//services/greeter/proto:helloworld_java_grpc",
+        "//services/calculator/proto:calculator_java_proto",
+        "//services/calculator/proto:calculator_java_grpc",
         "@maven//:io_grpc_grpc_api",
         "@maven//:io_grpc_grpc_core",
         "@maven//:io_grpc_grpc_testing",

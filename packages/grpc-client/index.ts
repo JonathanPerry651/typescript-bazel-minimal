@@ -1,5 +1,5 @@
-import { GreeterPromiseClient } from 'typescript_bazel_minimal/proto/helloworld_js_grpc_web_pb/proto/helloworld_grpc_web_pb';
-import { CalculatorPromiseClient } from 'typescript_bazel_minimal/proto/calculator_js_grpc_web_pb/proto/calculator_grpc_web_pb';
+import { GreeterPromiseClient } from 'typescript_bazel_minimal/services/greeter/proto/helloworld_js_grpc_web';
+import { CalculatorPromiseClient } from 'typescript_bazel_minimal/services/calculator/proto/calculator_js_grpc_web';
 
 const uri = 'http://localhost:8080/application/grpc-web';
 

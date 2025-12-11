@@ -1,13 +1,8 @@
 import React, { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { HelloRequest } from 'typescript_bazel_minimal/proto/helloworld_js_grpc_web_pb/proto/helloworld_pb';
-import { RpcError, Metadata } from 'grpc-web';
-import { SumRequest } from 'typescript_bazel_minimal/proto/calculator_js_grpc_web_pb/proto/calculator_pb';
+import { CalculatorApp } from 'typescript_bazel_minimal/packages/calculator-lib';
 
-import { greeterClient, calculatorClient } from '../../packages/grpc-client';
-
-const client = greeterClient;
-const calcClient = calculatorClient;
+const app = new CalculatorApp();
 
 const App = () => {
     const [messages, setMessages] = useState<string[]>([]);
@@ -18,30 +13,13 @@ const App = () => {
     };
 
     const sayHello = async () => {
-        const request = new HelloRequest();
-        request.setName('World');
-
-        try {
-            const response = await client.sayHello(request, {});
-            log('Response: ' + response.getMessage());
-        } catch (err: any) {
-            console.error(err);
-            log('Error: ' + err.message);
-        }
+        const result = await app.sayHello();
+        log(result);
     };
 
     const doSum = async () => {
-        const r = new SumRequest();
-        r.setA(10);
-        r.setB(20);
-
-        try {
-            const response = await calcClient.sum(r, {});
-            log('Sum Result: ' + response.getResult());
-        } catch (err: any) {
-            console.error(err);
-            log('Calc Error: ' + err.message);
-        }
+        const result = await app.doSum(10, 20);
+        log(result);
     };
 
     return (

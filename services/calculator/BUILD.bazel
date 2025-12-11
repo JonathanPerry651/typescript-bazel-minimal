@@ -7,8 +7,8 @@ java_binary(
     srcs = ["CalculatorServer.java"],
     main_class = "services.calculator.CalculatorServer",
     deps = [
-        "//proto:calculator_java_proto",
-        "//proto:calculator_java_grpc",
+        "//services/calculator/proto:calculator_java_proto",
+        "//services/calculator/proto:calculator_java_grpc",
         "@maven//:io_grpc_grpc_api",
         "@maven//:io_grpc_grpc_stub",
     ],

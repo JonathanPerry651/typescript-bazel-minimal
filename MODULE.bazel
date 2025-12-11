@@ -9,6 +9,12 @@ bazel_dep(name = "aspect_rules_cypress", version = "0.7.2")
 bazel_dep(name = "rules_nodejs", version = "6.3.3")
 bazel_dep(name = "aspect_rules_esbuild", version = "0.23.0")
 
+git_override(
+    module_name = "aspect_rules_esbuild",
+    commit = "97813128f38064a84602d8d444e30f7edf62efa3",
+    remote = "https://github.com/JonathanPerry651/rules_esbuild",
+)
+
 
 npm = use_extension("@aspect_rules_js//npm:extensions.bzl", "npm", dev_dependency = True)
 npm.npm_translate_lock(

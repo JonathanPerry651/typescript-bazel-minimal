@@ -6,9 +6,10 @@ ts_project(
     declaration = True,
     validate = False,
     deps = [
+        "//packages/grpc-client:lib",
         "//services/greeter/proto:helloworld_js_grpc_web",
         "//services/calculator/proto:calculator_js_grpc_web",
-        "//:node_modules/@types/google-protobuf",
+        "//:node_modules/@types/google-protobuf", # Needed for jspb.Message types used in generated code
     ],
     tsconfig = "//:tsconfig_build",
     transpiler = "tsc",

@@ -1,0 +1,34 @@
+load("@rules_proto//proto:defs.bzl", "proto_library")
+load("//tools:custom_rules.bzl", "wrapped_js_grpc_web_library")
+load("@rules_java//java:defs.bzl", "java_proto_library")
+load("@rules_proto_grpc_java//:defs.bzl", "java_grpc_library")
+
+package(default_visibility = ["//visibility:public"])
+
+proto_library(
+    name = "calculator_proto",
+    srcs = ["calculator.proto"],
+    deps = ["@googleapis//google/rpc:status_proto"],
+)
+
+java_proto_library(
+    name = "calculator_java_proto",
+    deps = [":calculator_proto"],
+)
+
+java_grpc_library(
+    name = "calculator_java_grpc",
+    protos = [":calculator_proto"],
+    deps = [
+        ":calculator_java_proto",
+        "@maven//:com_google_api_grpc_proto_google_common_protos",
+    ],
+)
+
+wrapped_js_grpc_web_library(
+    name = "calculator_js_grpc_web",
+    protos = [
+        ":calculator_proto",
+        "@googleapis//google/rpc:status_proto",
+    ],
+)
