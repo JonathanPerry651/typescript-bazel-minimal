@@ -76,6 +76,37 @@ _generate_index_ts = rule(
 )
 
 def wrapped_js_grpc_web_library(name, protos, **kwargs):
+    """
+    Wraps js_grpc_web_library to provide a simplified import experience.
+
+    This macro:
+    1. Generates the standard js_grpc_web_library targets (messages and service definitions).
+    2. Generates an index.ts file that re-exports all generated symbols.
+    3. Wraps everything in a ts_project that exposes the index.ts.
+
+    This allows consumers to import from a single location (the target path) rather than 
+    referencing deeply nested generated file paths.
+
+    Args:
+        name: The name of the target.
+        protos: A list of proto_library targets to generate code for. Source files are inferred from ProtoInfo.
+        **kwargs: Additional arguments passed to js_grpc_web_library.
+
+    Example:
+        BUILD.bazel:
+        ```starlark
+        wrapped_js_grpc_web_library(
+            name = "calculator_js_grpc_web",
+            protos = [":calculator_proto"],
+        )
+        ```
+
+        Usage in TypeScript:
+        ```typescript
+        // Import from the generated target path
+        import { SumRequest } from 'my_workspace/path/to/package/calculator_js_grpc_web';
+        ```
+    """
     pb_name = name + "_pb"
     js_grpc_web_library(
         name = pb_name,
