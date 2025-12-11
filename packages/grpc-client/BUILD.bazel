@@ -8,7 +8,6 @@ ts_project(
     deps = [
         "//services/greeter/proto:helloworld_js_grpc_web",
         "//services/calculator/proto:calculator_js_grpc_web",
-        "//:node_modules/@types/google-protobuf",
     ],
     tsconfig = "//:tsconfig_build",
     transpiler = "tsc",

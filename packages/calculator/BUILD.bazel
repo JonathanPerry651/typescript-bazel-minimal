@@ -10,8 +10,6 @@ ts_project(
         "//packages/calculator-lib:lib",
         "//services/greeter/proto:helloworld_js_grpc_web",
         "//services/calculator/proto:calculator_js_grpc_web",
-        "//:node_modules/grpc-web",
-        "//:node_modules/@types/google-protobuf",
         "//:node_modules/react",
         "//:node_modules/react-dom",
         "//:node_modules/@types/react",
