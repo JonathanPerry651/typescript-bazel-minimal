@@ -1,4 +1,4 @@
-load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
+
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 ts_project(
@@ -20,23 +20,13 @@ ts_project(
     transpiler = "tsc",
 )
 
-esbuild(
+load("@aspect_rules_webpack//webpack:defs.bzl", "webpack_bundle")
+
+webpack_bundle(
     name = "bundle",
-    entry_point = "index.js",
     srcs = [":lib"],
-    deps = [
-        "//packages/grpc-client:lib",
-        "//packages/calculator-lib:lib",
-        "//services/greeter/proto:helloworld_js_grpc_web",
-        "//services/calculator/proto:calculator_js_grpc_web",
-        "//:node_modules/google-protobuf",
-        "//:node_modules/grpc-web",
-        "//:node_modules/react",
-        "//:node_modules/react-dom",
-    ],
-    bundle = True,
-    minify = True,
-    tsconfig = "//:tsconfig_build",
+    node_modules = "//:node_modules",
+    entry_point = "index.js",
+    webpack_config = "webpack.config.js",
     visibility = ["//visibility:public"],
-    config = "esbuild.config.js",
 )

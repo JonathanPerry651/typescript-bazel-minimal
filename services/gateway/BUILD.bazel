@@ -80,8 +80,8 @@ java_library(
     name = "gateway_lib",
     srcs = ["GatewayServer.java"],
     deps = [
-        "//proto:helloworld_java_proto",
-        "//proto:helloworld_java_grpc",
+        "//services/greeter/proto:helloworld_java_proto",
+        "//services/greeter/proto:helloworld_java_grpc",
         "@maven//:io_grpc_grpc_api",
         "@maven//:io_grpc_grpc_netty_shaded",
         "@maven//:io_grpc_grpc_protobuf",

@@ -8,6 +8,7 @@ bazel_dep(name = "aspect_rules_js", version = "2.7.0")
 bazel_dep(name = "aspect_rules_cypress", version = "0.7.2")
 bazel_dep(name = "rules_nodejs", version = "6.3.3")
 bazel_dep(name = "aspect_rules_esbuild", version = "0.23.0")
+bazel_dep(name = "aspect_rules_webpack", version = "0.17.1")
 
 git_override(
     module_name = "aspect_rules_esbuild",
@@ -41,6 +42,8 @@ rules_esbuild_ext = use_extension("@aspect_rules_esbuild//esbuild:extensions.bzl
 rules_esbuild_ext.toolchain(esbuild_version = "0.23.0")
 use_repo(rules_esbuild_ext, "esbuild_toolchains")
 register_toolchains("@esbuild_toolchains//:all")
+
+
 
 
 
