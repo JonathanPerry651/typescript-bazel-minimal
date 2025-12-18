@@ -24,7 +24,10 @@ load("@aspect_rules_webpack//webpack:defs.bzl", "webpack_bundle")
 
 webpack_bundle(
     name = "bundle",
-    srcs = [":lib"],
+    srcs = [
+        ":lib",
+        "//:tsconfig_bin",
+    ],
     node_modules = "//:node_modules",
     entry_point = "index.js",
     webpack_config = "webpack.config.js",

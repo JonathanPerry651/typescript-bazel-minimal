@@ -40,12 +40,12 @@ public class GatewayServer {
         logger.info("HTTP Server started on port " + HTTP_PORT);
 
         // 2. Generic gRPC Proxy
-        // Channels
-        ManagedChannel greeterChannel = ManagedChannelBuilder.forAddress("greeter-service", 9090)
+        // Channels (Localhost for testing)
+        ManagedChannel greeterChannel = ManagedChannelBuilder.forAddress("localhost", 9090)
                 .usePlaintext()
                 .build();
         
-        ManagedChannel calculatorChannel = ManagedChannelBuilder.forAddress("calculator-service", 9091)
+        ManagedChannel calculatorChannel = ManagedChannelBuilder.forAddress("localhost", 9091)
                 .usePlaintext()
                 .build();
 

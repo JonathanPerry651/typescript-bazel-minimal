@@ -1,0 +1,11 @@
+load("@rules_java//java:defs.bzl", "java_binary")
+
+java_binary(
+    name = "jwt-wrapper",
+    srcs = ["JwtWrapperServer.java"],
+    main_class = "services.jwtwrapper.JwtWrapperServer",
+    deps = [
+        "@maven//:com_auth0_java_jwt",
+    ],
+    visibility = ["//visibility:public"],
+)

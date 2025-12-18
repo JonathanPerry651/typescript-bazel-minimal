@@ -3,11 +3,31 @@ import { CalculatorPromiseClient } from 'typescript_bazel_minimal/services/calcu
 
 const uri = 'http://localhost:8080/application/grpc-web';
 
+import { AuthManager } from './auth';
+
 class TargetHeaderInterceptor {
     constructor(private target: string) { }
     intercept(request: any, invoker: any) {
         const metadata = request.getMetadata();
         metadata['x-backend-target'] = this.target;
+        return invoker(request);
+    }
+}
+
+class AuthInterceptor {
+    async intercept(request: any, invoker: any) {
+        const metadata = request.getMetadata();
+
+        try {
+            // This smart getter will return the token if exists,
+            // OR trigger the iframe refresh flow if missing.
+            const token = await AuthManager.getValidToken();
+            metadata['Authorization'] = `Bearer ${token}`;
+        } catch (err) {
+            console.error("[AuthInterceptor] Failed to get token:", err);
+            // We proceed without token? Or throw? 
+            // Usually we proceed and let backend return 401
+        }
 
         return invoker(request);
     }
@@ -16,7 +36,10 @@ class TargetHeaderInterceptor {
 class RoutedGreeterClient extends GreeterPromiseClient {
     constructor(hostname: string) {
         super(hostname, null, {
-            unaryInterceptors: [new TargetHeaderInterceptor('greeter')]
+            unaryInterceptors: [
+                new TargetHeaderInterceptor('greeter'),
+                new AuthInterceptor()
+            ]
         });
     }
 }
@@ -24,7 +47,10 @@ class RoutedGreeterClient extends GreeterPromiseClient {
 class RoutedCalculatorClient extends CalculatorPromiseClient {
     constructor(hostname: string) {
         super(hostname, null, {
-            unaryInterceptors: [new TargetHeaderInterceptor('calculator')]
+            unaryInterceptors: [
+                new TargetHeaderInterceptor('calculator'),
+                new AuthInterceptor()
+            ]
         });
     }
 }

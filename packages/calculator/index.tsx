@@ -12,6 +12,16 @@ const App = () => {
         setMessages(prev => [...prev, msg]);
     };
 
+    React.useEffect(() => {
+        // No manual auth logic needed here anymore!
+        // The gRPC client's AuthInterceptor will automatically:
+        // 1. Check for a token
+        // 2. Refresh it via hidden iframe if missing
+        // 3. Attach it to the request
+
+        log("App loaded. Auth is handled transparently by the client library.");
+    }, []);
+
     const sayHello = async () => {
         const result = await app.sayHello();
         log(result);
@@ -31,7 +41,7 @@ const App = () => {
                 <button onClick={sayHello} style={{ marginRight: '10px', padding: '8px 16px' }}>
                     Say Hello
                 </button>
-                <button onClick={doSum} style={{ padding: '8px 16px' }}>
+                <button onClick={doSum} style={{ padding: '8px 16px', marginRight: '10px' }}>
                     Calculate 10+20
                 </button>
             </div>
