@@ -120,17 +120,30 @@ public class JwtWrapperServer {
 
                 Algorithm algorithm = Algorithm.RSA256(publicKey, privateKey);
 
+                String query = exchange.getRequestURI().getQuery();
+                String targetRedirect = this.redirectUrl; // Default from CLI
+
+                if (query != null) {
+                    for (String param : query.split("&")) {
+                        String[] pair = param.split("=");
+                        if (pair.length == 2 && pair[0].equals("redirect_url")) {
+                            targetRedirect = java.net.URLDecoder.decode(pair[1], java.nio.charset.StandardCharsets.UTF_8);
+                            break;
+                        }
+                    }
+                }
+
                 String newToken = JWT.create()
                         .withIssuer("jwt-wrapper-service")
                         .withClaim("original_token", originalToken)
                         .withClaim("extra_metadata", "signed-by-server-private-key")
                         .withClaim("original_sub", decoded.getSubject())
-                        .withClaim("redirect_url", this.redirectUrl) // Claim name requested by user
+                        .withClaim("redirect_url", targetRedirect) 
                         .sign(algorithm);
 
-                logger.info("Generated new wrapped token (RS256).");
+                logger.info("Generated new wrapped token (RS256). Target: " + targetRedirect);
 
-                String target = this.redirectUrl + "?token=" + newToken;
+                String target = targetRedirect + "?token=" + newToken;
                 exchange.getResponseHeaders().set("Location", target);
                 exchange.sendResponseHeaders(302, -1); 
                 
