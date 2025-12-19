@@ -1,0 +1,8 @@
+load("@rules_java//java:defs.bzl", "java_binary")
+
+java_binary(
+    name = "midnight-killer",
+    srcs = ["MidnightKiller.java"],
+    main_class = "experiments.midnightkiller.MidnightKiller",
+    visibility = ["//visibility:public"],
+)

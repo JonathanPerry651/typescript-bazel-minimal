@@ -6,6 +6,7 @@ java_binary(
     main_class = "services.jwtwrapper.JwtWrapperServer",
     deps = [
         "@maven//:com_auth0_java_jwt",
+        "@maven//:commons_cli_commons_cli",
     ],
     visibility = ["//visibility:public"],
 )
