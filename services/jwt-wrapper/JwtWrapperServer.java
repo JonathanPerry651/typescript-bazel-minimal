@@ -6,9 +6,6 @@ import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpsServer;
 import com.sun.net.httpserver.HttpsConfigurator;
 import com.sun.net.httpserver.HttpsParameters;
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
-import com.auth0.jwt.interfaces.DecodedJWT;
 import org.apache.commons.cli.*;
 import io.netty.handler.codec.http.QueryStringDecoder;
 
@@ -24,7 +21,6 @@ import java.security.KeyStore;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.ECPrivateKey;
-import java.security.interfaces.ECPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.cert.CertificateFactory;
@@ -44,7 +40,6 @@ public class JwtWrapperServer {
     private static final String DEFAULT_REDIRECT_URL = "http://example.com/dest";
 
     private static ECPrivateKey privateKey;
-    private static ECPublicKey publicKey;
     private static X509Certificate certificate;
 
     public static void main(String[] args) throws Exception {
@@ -111,10 +106,10 @@ public class JwtWrapperServer {
                 }
             });
             server = httpsServer;
-            logger.info("JWT Wrapper Server started on port " + PORT + " (HTTPS enabled, using ES256)");
+            logger.info("JWT Bounce Server started on port " + PORT + " (HTTPS enabled)");
         } else {
             server = HttpServer.create(new InetSocketAddress(PORT), 0);
-            logger.info("JWT Wrapper Server started on port " + PORT + " (HTTP Only, using ES256)");
+            logger.info("JWT Bounce Server started on port " + PORT + " (HTTP Only)");
         }
 
         server.createContext("/wrap-and-redirect", new WrapHandler(redirectUrl));
@@ -152,7 +147,6 @@ public class JwtWrapperServer {
         try (InputStream in = Files.newInputStream(Paths.get(certPath))) {
             CertificateFactory cf = CertificateFactory.getInstance("X.509");
             certificate = (X509Certificate) cf.generateCertificate(in);
-            publicKey = (ECPublicKey) certificate.getPublicKey();
         }
     }
 
@@ -160,7 +154,6 @@ public class JwtWrapperServer {
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("EC");
         kpg.initialize(new ECGenParameterSpec("secp256r1"));
         KeyPair kp = kpg.generateKeyPair();
-        publicKey = (ECPublicKey) kp.getPublic();
         privateKey = (ECPrivateKey) kp.getPrivate();
     }
 
@@ -173,51 +166,37 @@ public class JwtWrapperServer {
 
         @Override
         public void handle(HttpExchange exchange) throws IOException {
-            logger.info("Received request: " + exchange.getRequestMethod() + " " + exchange.getRequestURI());
+            QueryStringDecoder decoder = new QueryStringDecoder(exchange.getRequestURI());
+            Map<String, java.util.List<String>> params = decoder.parameters();
+            String targetRedirect = this.redirectUrl;
 
-            String authHeader = exchange.getRequestHeaders().getFirst("Authorization");
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                sendError(exchange, 401, "Missing or invalid Authorization header");
-                return;
-            }
-
-            String originalToken = authHeader.substring(7);
-
-            try {
-                DecodedJWT decoded = JWT.decode(originalToken);
-                logger.info("Decoded token subject: " + decoded.getSubject());
-
-                Algorithm algorithm = Algorithm.ECDSA256(publicKey, privateKey);
-
-                QueryStringDecoder decoder = new QueryStringDecoder(exchange.getRequestURI());
-                Map<String, java.util.List<String>> params = decoder.parameters();
-                String targetRedirect = this.redirectUrl;
-
-                if (params.containsKey("redirect_url")) {
-                    java.util.List<String> values = params.get("redirect_url");
-                    if (values != null && !values.isEmpty()) {
-                        targetRedirect = values.get(0);
-                    }
+            if (params.containsKey("redirect_url")) {
+                java.util.List<String> values = params.get("redirect_url");
+                if (values != null && !values.isEmpty()) {
+                    targetRedirect = values.get(0);
                 }
-
-                String newToken = JWT.create()
-                        .withIssuer("jwt-wrapper-service")
-                        .withClaim("original_token", originalToken)
-                        .withClaim("extra_metadata", "signed-by-server-private-key")
-                        .withClaim("original_sub", decoded.getSubject())
-                        .withClaim("redirect_url", targetRedirect)
-                        .sign(algorithm);
-
-                logger.info("Generated new wrapped token (ES256). Target: " + targetRedirect);
-
-                String target = targetRedirect + "?token=" + newToken;
-                exchange.getResponseHeaders().set("Location", target);
-                exchange.sendResponseHeaders(302, -1);
-
-            } catch (Exception e) {
-                logger.severe("Error processing token: " + e.getMessage());
-                sendError(exchange, 400, "Invalid Token: " + e.getMessage());
             }
+
+            // JavaScript Redirector
+            // Redirects to targetRedirect + <existing_fragment>
+            String body = "<html><body>" +
+                    "<script>" +
+                    "  var target = \"" + targetRedirect + "\";" +
+                    "  if (window.location.hash) {" +
+                    "      target += window.location.hash;" +
+                    "  }" +
+                    "  window.location.replace(target);" +
+                    "</script>" +
+                    "Redirecting to " + targetRedirect + "..." +
+                    "</body></html>";
+
+            logger.info("Serving JS redirect to: " + targetRedirect);
+
+            exchange.getResponseHeaders().set("Content-Type", "text/html");
+            exchange.sendResponseHeaders(200, body.length());
+            OutputStream os = exchange.getResponseBody();
+            os.write(body.getBytes());
+            os.close();
         }
 
         private void sendError(HttpExchange exchange, int code, String message) throws IOException {
