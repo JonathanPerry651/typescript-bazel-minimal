@@ -19,6 +19,14 @@ static_resources:
               domains: ["*"]
               routes:
               - match:
+                  prefix: "/"
+                  headers:
+                  - name: content-type
+                    prefix_match: application/grpc
+                route:
+                  cluster: gateway_native_grpc
+                  max_grpc_timeout: 0s
+              - match:
                   prefix: "/application/grpc-web" # Matches our client URI
                   headers:
                   - name: content-type
@@ -71,6 +79,20 @@ static_resources:
               socket_address:
                 address: 127.0.0.1
                 port_value: 9000
+  - name: gateway_native_grpc
+    connect_timeout: 0.25s
+    type: STATIC
+    lb_policy: ROUND_ROBIN
+    http2_protocol_options: {}
+    load_assignment:
+      cluster_name: gateway_native_grpc
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: 127.0.0.1
+                port_value: 9001
   - name: gateway_static
     connect_timeout: 0.25s
     type: STATIC
