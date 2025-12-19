@@ -25,9 +25,13 @@ public class JwtWrapperServer {
     public static void main(String[] args) throws Exception {
         // 1. Parse Command Line Arguments
         Options options = new Options();
-        options.addOption("p", "private-key", true, "Path to PKCS#8 PEM Private Key");
-        options.addOption("c", "certificate", true, "Path to X.509 PEM Certificate");
-        options.addOption("r", "redirect-url", true, "Target Redirect URL");
+        Option privateKeyOpt = new Option("p", "private-key", true, "Path to PKCS#8 PEM Private Key");
+        Option certOpt = new Option("c", "certificate", true, "Path to X.509 PEM Certificate");
+        Option redirectUrlOpt = new Option("r", "redirect-url", true, "Target Redirect URL");
+
+        options.addOption(privateKeyOpt);
+        options.addOption(certOpt);
+        options.addOption(redirectUrlOpt);
 
         CommandLineParser parser = new DefaultParser();
         CommandLine cmd;
@@ -40,9 +44,9 @@ public class JwtWrapperServer {
             return;
         }
 
-        String redirectUrl = cmd.getOptionValue("redirect-url", DEFAULT_REDIRECT_URL);
-        String privPath = cmd.getOptionValue("private-key");
-        String certPath = cmd.getOptionValue("certificate");
+        String redirectUrl = cmd.getOptionValue(redirectUrlOpt, DEFAULT_REDIRECT_URL);
+        String privPath = cmd.getOptionValue(privateKeyOpt);
+        String certPath = cmd.getOptionValue(certOpt);
 
         // 2. Load Keys
         if (privPath != null && certPath != null) {
