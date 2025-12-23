@@ -30,9 +30,6 @@ export class AuthManager {
                 return;
             }
 
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-
             // Construct Double-Hop URL
             // 1. Final destination: Origin + /silent-auth.html
             const origin = window.location.origin;
@@ -56,13 +53,28 @@ export class AuthManager {
             const encodedWrapperUrl = encodeURIComponent(wrapperUrl);
             const fullUrl = `${CENTRAL_AUTH_URL}?redirect=${encodedWrapperUrl}`;
 
-            iframe.src = fullUrl;
+            // Popup Auth (Bypass CSP)
+            const width = 600;
+            const height = 600;
+            const left = (window.screen.width - width) / 2;
+            const top = (window.screen.height - height) / 2;
+
+            const popup = window.open(
+                fullUrl,
+                'AuthPopup',
+                `width=${width},height=${height},top=${top},left=${left},resizable,scrollbars`
+            );
+
+            if (!popup) {
+                reject(new Error("Popup blocked. Please check your browser settings."));
+                return;
+            }
 
             const handleMessage = (event: MessageEvent) => {
                 // In real app, check origin logic
                 if (event.data?.type === 'AUTH_TOKEN') {
                     const newToken = event.data.token;
-                    console.log("[AuthManager] Token received from Iframe:", newToken);
+                    console.log("[AuthManager] Token received from Popup:", newToken);
                     localStorage.setItem(this.TOKEN_KEY, newToken);
                     cleanup();
                     resolve(newToken);
@@ -71,22 +83,33 @@ export class AuthManager {
 
             const cleanup = () => {
                 window.removeEventListener('message', handleMessage);
-                if (document.body.contains(iframe)) {
-                    document.body.removeChild(iframe);
+                if (popup && !popup.closed) {
+                    popup.close();
                 }
                 AuthManager.refreshPromise = null;
             };
 
             window.addEventListener('message', handleMessage);
-            document.body.appendChild(iframe);
+
+            // Poll to see if popup was closed manually by user
+            const pollTimer = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(pollTimer);
+                    if (AuthManager.refreshPromise) {
+                        cleanup();
+                        reject(new Error("Auth Popup closed by user"));
+                    }
+                }
+            }, 500);
 
             // Timeout safety
             setTimeout(() => {
                 if (AuthManager.refreshPromise) {
                     cleanup();
+                    clearInterval(pollTimer);
                     reject(new Error("Auth Refresh Timed Out"));
                 }
-            }, 10000); // 10s timeout
+            }, 30000); // Increased timeout for manual interaction if needed
         });
 
         return this.refreshPromise;
