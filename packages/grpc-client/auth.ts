@@ -47,7 +47,8 @@ export class AuthManager {
 
             // Let's assume we have constants for these services.
             const CENTRAL_AUTH_URL = "http://localhost:8081/authorize"; // Mock IdP
-            const JWT_WRAPPER_URL = "http://localhost:8082/wrap-and-redirect";
+            // REFACTOR: Replaced Java JwtWrapperServer with static bounce.html served by gateway
+            const JWT_WRAPPER_URL = "http://localhost:8080/static/bounce.html";
 
             const encodedSilentAuth = encodeURIComponent(silentAuthUrl);
             const wrapperUrl = `${JWT_WRAPPER_URL}?redirect=${encodedSilentAuth}`;

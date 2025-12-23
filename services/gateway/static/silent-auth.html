@@ -21,7 +21,7 @@
                         window.parent.postMessage({
                             type: 'AUTH_TOKEN',
                             token: token
-                        }, '*'); // In prod, restrict to specific origin if possible
+                        }, window.location.origin); // Restrict to same origin to prevent token leakage
                     } else {
                         console.error("[SilentAuth] Not in an iframe");
                     }

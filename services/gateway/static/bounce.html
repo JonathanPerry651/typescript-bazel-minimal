@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Redirecting...</title>
+</head>
+
+<body>
+    <script>
+        (function () {
+            // Function to resolve target URL from query parameters
+            function resolveTarget() {
+                var params = new URLSearchParams(window.location.search);
+                // Support both 'redirect_url' (legacy) and 'redirect' (new alias)
+                var target = params.get('redirect_url') || params.get('redirect');
+                return target;
+            }
+
+            var target = resolveTarget();
+
+            if (target) {
+                // Append existing hash fragment if present
+                if (window.location.hash) {
+                    target += window.location.hash;
+                }
+
+                // Perform the redirect
+                // Using replace() so this bounce page doesn't get stuck in history
+                window.location.replace(target);
+
+                document.body.innerText = "Redirecting to " + target + "...";
+            } else {
+                console.error("No redirect target specified in query parameters.");
+                document.body.innerText = "Error: No redirect target specified.";
+            }
+        })();
+    </script>
+</body>
+
+</html>
