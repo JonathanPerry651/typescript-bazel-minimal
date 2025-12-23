@@ -2,5 +2,8 @@
     "name": "grpc-client",
     "version": "0.0.0",
     "main": "index.js",
-    "types": "index.d.ts"
+    "types": "index.d.ts",
+    "dependencies": {
+        "oidc-client-ts": "3.1.0"
+    }
 }
