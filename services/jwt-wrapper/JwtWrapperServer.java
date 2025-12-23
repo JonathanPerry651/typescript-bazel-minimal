@@ -168,27 +168,9 @@ public class JwtWrapperServer {
         public void handle(HttpExchange exchange) throws IOException {
             QueryStringDecoder decoder = new QueryStringDecoder(exchange.getRequestURI());
             Map<String, java.util.List<String>> params = decoder.parameters();
-            String targetRedirect = this.redirectUrl;
 
-            if (params.containsKey("redirect_url")) {
-                java.util.List<String> values = params.get("redirect_url");
-                if (values != null && !values.isEmpty()) {
-                    targetRedirect = values.get(0);
-                }
-            }
-
-            // JavaScript Redirector
-            // Redirects to targetRedirect + <existing_fragment>
-            String body = "<html><body>" +
-                    "<script>" +
-                    "  var target = \"" + targetRedirect + "\";" +
-                    "  if (window.location.hash) {" +
-                    "      target += window.location.hash;" +
-                    "  }" +
-                    "  window.location.replace(target);" +
-                    "</script>" +
-                    "Redirecting to " + targetRedirect + "..." +
-                    "</body></html>";
+            String targetRedirect = resolveTarget(params, this.redirectUrl);
+            String body = generateRedirectHtml(targetRedirect);
 
             logger.info("Serving JS redirect to: " + targetRedirect);
 
@@ -198,12 +180,44 @@ public class JwtWrapperServer {
             os.write(body.getBytes());
             os.close();
         }
+    }
 
-        private void sendError(HttpExchange exchange, int code, String message) throws IOException {
-            exchange.sendResponseHeaders(code, message.length());
-            OutputStream os = exchange.getResponseBody();
-            os.write(message.getBytes());
-            os.close();
+    // Visible for testing
+    static String resolveTarget(Map<String, List<String>> params, String defaultUrl) {
+        if (params.containsKey("redirect_url")) {
+            List<String> values = params.get("redirect_url");
+            if (values != null && !values.isEmpty()) {
+                return values.get(0);
+            }
         }
+        if (params.containsKey("redirect")) {
+            List<String> values = params.get("redirect");
+            if (values != null && !values.isEmpty()) {
+                return values.get(0);
+            }
+        }
+        return defaultUrl;
+    }
+
+    // Visible for testing
+    static String generateRedirectHtml(String targetRedirect) {
+        // Simple JSON string escaping
+        String safeTarget = targetRedirect
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("</script>", "<\\/script>"); // Prevent script injection break
+
+        return "<html><body>" +
+                "<script>" +
+                "  var target = \"" + safeTarget + "\";" +
+                "  if (window.location.hash) {" +
+                "      target += window.location.hash;" +
+                "  }" +
+                "  window.location.replace(target);" +
+                "</script>" +
+                "Redirecting to " + safeTarget + "..." +
+                "</body></html>";
     }
 }

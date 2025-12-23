@@ -33,14 +33,32 @@ export class AuthManager {
             const iframe = document.createElement('iframe');
             iframe.style.display = 'none';
 
+            // Construct Double-Hop URL
+            // 1. Final destination: Origin + /silent-auth.html
+            const origin = window.location.origin;
+            const silentAuthUrl = `${origin}/silent-auth.html`;
 
+            // 2. Wrap via JwtWrapper: https://jwt-wrapper?redirect=...
+            // Note: We need to point to the actual JwtWrapper service URL.
+            // Assumption: It's running on port 8082 or proxied.
+            // Based on user request "https://jwt-wrapper-server?redirect=origin"
+            // I'll assume localhost:8082 for now, or maybe it should be relative?
+            // The prompt said: "https://central-auth?redirect=<https//jwt-wrapper-server?redirect=origin>"
 
-            // Point to real Mock IdP server (ensure you run `bazel run //packages/mock-idp:server`)
-            iframe.src = 'http://localhost:8081/authorize';
+            // Let's assume we have constants for these services.
+            const CENTRAL_AUTH_URL = "http://localhost:8081/authorize"; // Mock IdP
+            const JWT_WRAPPER_URL = "http://localhost:8082/wrap-and-redirect";
+
+            const encodedSilentAuth = encodeURIComponent(silentAuthUrl);
+            const wrapperUrl = `${JWT_WRAPPER_URL}?redirect=${encodedSilentAuth}`;
+
+            const encodedWrapperUrl = encodeURIComponent(wrapperUrl);
+            const fullUrl = `${CENTRAL_AUTH_URL}?redirect=${encodedWrapperUrl}`;
+
+            iframe.src = fullUrl;
 
             const handleMessage = (event: MessageEvent) => {
-                // In real app, check origin: if (event.origin !== 'http://localhost:8081') return;
-
+                // In real app, check origin logic
                 if (event.data?.type === 'AUTH_TOKEN') {
                     const newToken = event.data.token;
                     console.log("[AuthManager] Token received from Iframe:", newToken);
@@ -67,7 +85,7 @@ export class AuthManager {
                     cleanup();
                     reject(new Error("Auth Refresh Timed Out"));
                 }
-            }, 5000);
+            }, 10000); // 10s timeout
         });
 
         return this.refreshPromise;

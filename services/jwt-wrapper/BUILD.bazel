@@ -1,12 +1,30 @@
 load("@rules_java//java:defs.bzl", "java_binary")
 
-java_binary(
-    name = "jwt-wrapper",
+java_library(
+    name = "jwt-wrapper-lib",
     srcs = ["JwtWrapperServer.java"],
-    main_class = "services.jwtwrapper.JwtWrapperServer",
     deps = [
         "@maven//:commons_cli_commons_cli",
         "@maven//:io_netty_netty_codec_http",
     ],
     visibility = ["//visibility:public"],
+)
+
+java_binary(
+    name = "jwt-wrapper",
+    main_class = "services.jwtwrapper.JwtWrapperServer",
+    runtime_deps = [":jwt-wrapper-lib"],
+    visibility = ["//visibility:public"],
+)
+
+java_test(
+    name = "RedirectEncodingTest",
+    srcs = ["RedirectEncodingTest.java"],
+    test_class = "services.jwtwrapper.RedirectEncodingTest",
+    deps = [
+        ":jwt-wrapper-lib",
+        "@maven//:junit_junit",
+        "@maven//:com_google_truth_truth",
+        "@maven//:io_netty_netty_codec_http",
+    ],
 )

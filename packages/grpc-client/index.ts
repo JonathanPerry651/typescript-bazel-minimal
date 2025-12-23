@@ -19,17 +19,39 @@ class AuthInterceptor {
         const metadata = request.getMetadata();
 
         try {
-            // This smart getter will return the token if exists,
-            // OR trigger the iframe refresh flow if missing.
+            // 1. Initial attempt with current token (or refresh if missing)
             const token = await AuthManager.getValidToken();
-            metadata['Authorization'] = `Bearer ${token}`;
+            if (token) {
+                metadata['Authorization'] = `Bearer ${token}`;
+            }
         } catch (err) {
-            console.error("[AuthInterceptor] Failed to get token:", err);
-            // We proceed without token? Or throw? 
-            // Usually we proceed and let backend return 401
+            console.error("[AuthInterceptor] Failed to get initial token:", err);
+            // Proceed without token, backend might return 401/16
         }
 
-        return invoker(request);
+        try {
+            return await invoker(request);
+        } catch (err: any) {
+            // 2. Check for UNAUTHENTICATED (gRPC code 16)
+            if (err && err.code === 16) {
+                console.warn("[AuthInterceptor] Received UNAUTHENTICATED (16). Refreshing token and retrying...");
+
+                try {
+                    // Force refresh
+                    const newToken = await AuthManager.refreshSession();
+                    if (newToken) {
+                        metadata['Authorization'] = `Bearer ${newToken}`;
+                    }
+
+                    // Retry request
+                    return await invoker(request);
+                } catch (retryErr) {
+                    console.error("[AuthInterceptor] Retry failed:", retryErr);
+                    throw retryErr; // Throw the retry error
+                }
+            }
+            throw err; // Re-throw other errors
+        }
     }
 }
 

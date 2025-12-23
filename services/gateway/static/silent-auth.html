@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Silent Auth</title>
+</head>
+
+<body>
+    <script>
+        (function () {
+            // Extract access_token from hash: #access_token=...
+            var hash = window.location.hash;
+            if (hash) {
+                var params = new URLSearchParams(hash.substring(1)); // remove #
+                var token = params.get('access_token');
+
+                if (token) {
+                    // Post to parent
+                    if (window.parent !== window) {
+                        console.log("[SilentAuth] Posting token to parent");
+                        window.parent.postMessage({
+                            type: 'AUTH_TOKEN',
+                            token: token
+                        }, '*'); // In prod, restrict to specific origin if possible
+                    } else {
+                        console.error("[SilentAuth] Not in an iframe");
+                    }
+                } else {
+                    console.error("[SilentAuth] No access_token found in hash");
+                }
+            } else {
+                console.error("[SilentAuth] No hash fragment found");
+            }
+        })();
+    </script>
+</body>
+
+</html>
