@@ -1,4 +1,4 @@
-load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
+load("@aspect_rules_webpack//webpack:defs.bzl", "webpack_bundle")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 ts_project(
@@ -17,20 +17,14 @@ ts_project(
     visibility = ["//visibility:public"],
 )
 
-esbuild(
+webpack_bundle(
     name = "silent_auth_bundle",
-    entry_point = "silent-auth.ts",
-    config = {
-        "format": "iife",
-    },
-    deps = [
+    srcs = [
         ":lib",
-        "//:node_modules/oidc-client-ts",
+        "//:tsconfig_bin",
     ],
-    platform = "browser",
-    target = "es2020",
-    output = "silent-auth.bundle.js",
-    output_dir = False,
-    minify = True,
+    node_modules = "//:node_modules",
+    entry_point = "silent-auth.js",
+    webpack_config = "webpack.config.js",
     visibility = ["//visibility:public"],
 )
