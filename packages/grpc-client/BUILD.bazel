@@ -1,8 +1,9 @@
+load("@aspect_rules_esbuild//esbuild:defs.bzl", "esbuild")
 load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 ts_project(
     name = "lib",
-    srcs = ["index.ts", "auth.ts"],
+    srcs = ["index.ts", "auth.ts", "silent-auth.ts"],
     declaration = True,
     validate = False,
     deps = [
@@ -13,5 +14,23 @@ ts_project(
     tsconfig = "//:tsconfig_build",
     transpiler = "tsc",
     source_map = True,
+    visibility = ["//visibility:public"],
+)
+
+esbuild(
+    name = "silent_auth_bundle",
+    entry_point = "silent-auth.ts",
+    config = {
+        "format": "iife",
+    },
+    deps = [
+        ":lib",
+        "//:node_modules/oidc-client-ts",
+    ],
+    platform = "browser",
+    target = "es2020",
+    output = "silent-auth.bundle.js",
+    output_dir = False,
+    minify = True,
     visibility = ["//visibility:public"],
 )

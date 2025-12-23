@@ -18,6 +18,7 @@ pkg_tar(
     name = "static_layer",
     srcs = glob(["static/**"]) + [
         "//packages/calculator:bundle",
+        "//packages/grpc-client:silent_auth_bundle",
     ],
     package_dir = "/app/static",
 )

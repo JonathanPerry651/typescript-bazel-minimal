@@ -21,6 +21,13 @@ export class AuthManager {
             // Optional: Automation of silent refresh via iframe
             automaticSilentRenew: true,
             silent_redirect_uri: `${origin}/silent-auth.html`,
+            metadata: {
+                issuer: "http://localhost:8081",
+                authorization_endpoint: "http://localhost:8081/authorize",
+                token_endpoint: "http://localhost:8081/token",
+                userinfo_endpoint: "http://localhost:8081/userinfo",
+                jwks_uri: "http://localhost:8081/.well-known/jwks.json",
+            }
         });
 
         // Log events for debugging

@@ -6,12 +6,8 @@
 </head>
 
 <body>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/oidc-client-ts/3.1.0/oidc-client-ts.min.js"></script>
-    <script>
-        // Use oidc-client-ts to handle the popup callback
-        // It automatically parses the code/token, communicates with the opener, and closes the window.
-        new oidc.UserManager({}).signinPopupCallback();
-    </script>
+    <h1>Authenticating...</h1>
+    <script src="/static/silent-auth.bundle.js"></script>
 </body>
 
 </html>
