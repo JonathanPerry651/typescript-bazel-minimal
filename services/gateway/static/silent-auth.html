@@ -8,35 +8,32 @@
 <body>
     <script>
         (function () {
-            // Extract access_token from hash: #access_token=...
-            var hash = window.location.hash;
-            if (hash) {
-                var params = new URLSearchParams(hash.substring(1)); // remove #
-                var token = params.get('access_token');
+            // Parse query parameters for 'code' (Authorization Code Flow)
+            // Note: PKCE returns code in query string, Implicit returns token in hash.
+            var params = new URLSearchParams(window.location.search);
+            var code = params.get('code');
 
-                if (token) {
-                    // Check if running in Popup (opener) or Iframe (parent)
-                    var targetWindow = window.opener || window.parent;
+            if (code) {
+                // Check if running in Popup (opener) or Iframe (parent)
+                var targetWindow = window.opener || window.parent;
 
-                    if (targetWindow && targetWindow !== window) {
-                        console.log("[SilentAuth] Posting token to parent/opener");
-                        targetWindow.postMessage({
-                            type: 'AUTH_TOKEN',
-                            token: token
-                        }, window.location.origin); // Restrict to same origin
+                if (targetWindow && targetWindow !== window) {
+                    console.log("[SilentAuth] Posting auth code to parent/opener");
+                    targetWindow.postMessage({
+                        type: 'AUTH_CODE',
+                        code: code
+                    }, window.location.origin); // Restrict to same origin
 
-                        // If in a popup, close self
-                        if (window.opener) {
-                            window.close();
-                        }
-                    } else {
-                        console.error("[SilentAuth] No parent/opener found to post message to.");
+                    // If in a popup, close self
+                    if (window.opener) {
+                        window.close();
                     }
                 } else {
-                    console.error("[SilentAuth] No access_token found in hash");
+                    console.error("[SilentAuth] No parent/opener found to post message to.");
                 }
             } else {
-                console.error("[SilentAuth] No hash fragment found");
+                console.error("[SilentAuth] No code found in query parameters");
+                document.body.innerText = "Error: Authentication failed (no code).";
             }
         })();
     </script>

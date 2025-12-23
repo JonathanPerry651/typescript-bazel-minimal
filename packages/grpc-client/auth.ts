@@ -30,86 +30,149 @@ export class AuthManager {
                 return;
             }
 
-            // Construct Double-Hop URL
-            // 1. Final destination: Origin + /silent-auth.html
-            const origin = window.location.origin;
-            const silentAuthUrl = `${origin}/silent-auth.html`;
-
-            // 2. Wrap via JwtWrapper: https://jwt-wrapper?redirect=...
-            // Note: We need to point to the actual JwtWrapper service URL.
-            // Assumption: It's running on port 8082 or proxied.
-            // Based on user request "https://jwt-wrapper-server?redirect=origin"
-            // I'll assume localhost:8082 for now, or maybe it should be relative?
-            // The prompt said: "https://central-auth?redirect=<https//jwt-wrapper-server?redirect=origin>"
-
-            // Let's assume we have constants for these services.
-            const CENTRAL_AUTH_URL = "http://localhost:8081/authorize"; // Mock IdP
-            // REFACTOR: Replaced Java JwtWrapperServer with static bounce.html served by gateway
-            const JWT_WRAPPER_URL = "http://localhost:8080/static/bounce.html";
-
-            const encodedSilentAuth = encodeURIComponent(silentAuthUrl);
-            const wrapperUrl = `${JWT_WRAPPER_URL}?redirect=${encodedSilentAuth}`;
-
-            const encodedWrapperUrl = encodeURIComponent(wrapperUrl);
-            const fullUrl = `${CENTRAL_AUTH_URL}?redirect=${encodedWrapperUrl}`;
-
-            // Popup Auth (Bypass CSP)
-            const width = 600;
-            const height = 600;
-            const left = (window.screen.width - width) / 2;
-            const top = (window.screen.height - height) / 2;
-
-            const popup = window.open(
-                fullUrl,
-                'AuthPopup',
-                `width=${width},height=${height},top=${top},left=${left},resizable,scrollbars`
-            );
-
-            if (!popup) {
-                reject(new Error("Popup blocked. Please check your browser settings."));
-                return;
-            }
-
-            const handleMessage = (event: MessageEvent) => {
-                // In real app, check origin logic
-                if (event.data?.type === 'AUTH_TOKEN') {
-                    const newToken = event.data.token;
-                    console.log("[AuthManager] Token received from Popup:", newToken);
-                    localStorage.setItem(this.TOKEN_KEY, newToken);
-                    cleanup();
-                    resolve(newToken);
-                }
+            // PKCE Helper Functions
+            const generateCodeVerifier = () => {
+                const array = new Uint8Array(32);
+                window.crypto.getRandomValues(array);
+                return Array.from(array, dec => ('0' + dec.toString(16)).substr(-2)).join('');
             };
 
-            const cleanup = () => {
-                window.removeEventListener('message', handleMessage);
-                if (popup && !popup.closed) {
-                    popup.close();
-                }
-                AuthManager.refreshPromise = null;
+            const sha256 = async (plain: string) => {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(plain);
+                const hash = await window.crypto.subtle.digest('SHA-256', data);
+                return hash;
             };
 
-            window.addEventListener('message', handleMessage);
+            const base64UrlEncode = (a: ArrayBuffer) => {
+                return btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(a))))
+                    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+            };
 
-            // Poll to see if popup was closed manually by user
-            const pollTimer = setInterval(() => {
-                if (popup.closed) {
-                    clearInterval(pollTimer);
-                    if (AuthManager.refreshPromise) {
-                        cleanup();
-                        reject(new Error("Auth Popup closed by user"));
+            // Start Async Flow
+            (async () => {
+                try {
+                    const codeVerifier = generateCodeVerifier();
+                    const hashed = await sha256(codeVerifier);
+                    const codeChallenge = base64UrlEncode(hashed);
+
+                    // Construct Double-Hop URL with PKCE params
+                    // 1. Final destination: Origin + /silent-auth.html
+                    const origin = window.location.origin;
+                    const silentAuthUrl = `${origin}/silent-auth.html`;
+
+                    // Let's assume we have constants for these services.
+                    // Note: Central Auth needs to support /authorize?response_type=code&code_challenge=...
+                    const CENTRAL_AUTH_URL = "http://localhost:8081/authorize";
+                    const JWT_WRAPPER_URL = "http://localhost:8080/static/bounce.html";
+
+                    const encodedSilentAuth = encodeURIComponent(silentAuthUrl);
+                    const wrapperUrl = `${JWT_WRAPPER_URL}?redirect=${encodedSilentAuth}`; // bounce.html blindly forwards other params
+
+                    const encodedWrapperUrl = encodeURIComponent(wrapperUrl);
+
+                    // Append PKCE params to the INITIAL URL (Central Auth)
+                    // bounce.html will forward keys *other than* redirect to destination,
+                    // BUT wait... Central Auth redirects to bounce.html?
+                    // Usually: CentralAuth -> valid? -> Redirect to (Bounce + params).
+                    // So we send params to CentralAuth.
+                    const fullUrl = `${CENTRAL_AUTH_URL}?redirect=${encodedWrapperUrl}&response_type=code&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+
+                    // Popup Auth (Bypass CSP)
+                    const width = 600;
+                    const height = 600;
+                    const left = (window.screen.width - width) / 2;
+                    const top = (window.screen.height - height) / 2;
+
+                    const popup = window.open(
+                        fullUrl,
+                        'AuthPopup',
+                        `width=${width},height=${height},top=${top},left=${left},resizable,scrollbars`
+                    );
+
+                    if (!popup) {
+                        reject(new Error("Popup blocked. Please check your browser settings."));
+                        return;
                     }
-                }
-            }, 500);
 
-            // Timeout safety
-            setTimeout(() => {
-                if (AuthManager.refreshPromise) {
-                    cleanup();
-                    clearInterval(pollTimer);
-                    reject(new Error("Auth Refresh Timed Out"));
+                    // Declare pollTimer here so cleanup can access it
+                    let pollTimer: any;
+
+                    const cleanup = () => {
+                        window.removeEventListener('message', handleMessage);
+                        if (popup && !popup.closed) {
+                            popup.close();
+                        }
+                        AuthManager.refreshPromise = null;
+                        clearInterval(pollTimer); // Clear the interval when cleaning up
+                    };
+
+                    const handleMessage = async (event: MessageEvent) => {
+                        // Check origin for security
+                        if (event.origin !== window.location.origin) {
+                            return;
+                        }
+
+                        if (event.data?.type === 'AUTH_CODE') {
+                            const code = event.data.code;
+                            console.log("[AuthManager] Auth Code received:", code);
+                            cleanup();
+
+                            // PKCE: Exchange Code for Token
+                            try {
+                                console.log("[AuthManager] Exchanging code for token...");
+                                // Mocking the token endpoint call (since we don't have a real one)
+                                // In real life: POST /token with code, verifier, client_id
+                                /*
+                                const response = await fetch('http://localhost:8081/token', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                    body: new URLSearchParams({
+                                        grant_type: 'authorization_code',
+                                        code: code,
+                                        redirect_uri: silentAuthUrl,
+                                        code_verifier: codeVerifier,
+                                        client_id: 'grpc-client'
+                                    })
+                                });
+                                const data = await response.json();
+                                const newToken = data.access_token;
+                                */
+
+                                // Mock simulation for success
+                                const newToken = `mock_token_from_code_${code}`;
+
+                                console.log("[AuthManager] Token acquired via PKCE:", newToken);
+                                localStorage.setItem(this.TOKEN_KEY, newToken);
+                                resolve(newToken);
+                            } catch (e) {
+                                reject(new Error("Token exchange failed: " + e));
+                            }
+                        }
+                    };
+
+                    window.addEventListener('message', handleMessage);
+
+                    // Poll to see if popup was closed manually by user
+                    pollTimer = setInterval(() => {
+                        if (popup.closed) {
+                            cleanup();
+                            reject(new Error("Auth Popup closed by user"));
+                        }
+                    }, 500);
+
+                    // Timeout safety
+                    setTimeout(() => {
+                        if (AuthManager.refreshPromise) { // Check if promise is still active
+                            cleanup();
+                            reject(new Error("Auth Refresh Timed Out"));
+                        }
+                    }, 30000); // Increased timeout for manual interaction if needed
+
+                } catch (err) {
+                    reject(err);
                 }
-            }, 30000); // Increased timeout for manual interaction if needed
+            })();
         });
 
         return this.refreshPromise;

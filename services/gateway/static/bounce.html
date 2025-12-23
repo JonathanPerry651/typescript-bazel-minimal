@@ -13,7 +13,18 @@
                 var params = new URLSearchParams(window.location.search);
                 // Support both 'redirect_url' (legacy) and 'redirect' (new alias)
                 var target = params.get('redirect_url') || params.get('redirect');
-                return target;
+
+                if (!target) return null;
+
+                // Forward all other parameters (like code, state) to the target
+                var targetUrl = new URL(target);
+                params.forEach(function (value, key) {
+                    if (key !== 'redirect_url' && key !== 'redirect') {
+                        targetUrl.searchParams.append(key, value);
+                    }
+                });
+
+                return targetUrl.toString();
             }
 
             var target = resolveTarget();
