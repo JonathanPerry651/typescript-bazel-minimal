@@ -3,7 +3,7 @@ load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 ts_project(
     name = "lib",
-    srcs = ["index.ts", "auth.ts", "silent-auth.ts", "bounce.ts"],
+    srcs = ["index.ts", "auth.ts", "bounce.ts"],
     declaration = True,
     validate = False,
     deps = [
@@ -17,17 +17,7 @@ ts_project(
     visibility = ["//visibility:public"],
 )
 
-webpack_bundle(
-    name = "silent_auth_bundle",
-    srcs = [
-        ":lib",
-        "//:tsconfig_bin",
-    ],
-    node_modules = "//:node_modules",
-    entry_point = "silent-auth.js",
-    webpack_config = "webpack.config.js",
-    visibility = ["//visibility:public"],
-)
+
 
 webpack_bundle(
     name = "bounce_bundle",
