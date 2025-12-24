@@ -3,7 +3,7 @@ load("@aspect_rules_ts//ts:defs.bzl", "ts_project")
 
 ts_project(
     name = "lib",
-    srcs = ["index.ts", "auth.ts", "bounce.ts"],
+    srcs = ["index.ts", "auth.ts", "bounce.tsx"],
     declaration = True,
     validate = False,
     deps = [

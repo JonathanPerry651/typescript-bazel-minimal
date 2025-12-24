@@ -25,6 +25,7 @@ async function handleBounce() {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     const returnUrlParam = urlParams.get('return_url');
+    const isPopup = urlParams.get('popup') === 'true';
 
     // 1. Check if this is a Callback from IdP (has code)
     if (code) {
@@ -46,6 +47,16 @@ async function handleBounce() {
             const cookieDomain = window.location.hostname === 'localhost' ? '' : '; Domain=.mycorp.com';
             document.cookie = `auth_token=${user.access_token}; Path=/${cookieDomain}; Max-Age=${user.expires_in || 3600}; SameSite=Lax`;
             console.log("[Bounce] Cookie set.");
+
+            if (window.opener) {
+                console.log("[Bounce] Notify opener and close popup.");
+                window.opener.postMessage({
+                    type: 'BOUNCE_SUCCESS',
+                    token: user.access_token
+                }, window.location.origin);
+                window.close();
+                return;
+            }
 
             // Redirect back to the original application
             // We need to know where to go. 
@@ -73,13 +84,27 @@ async function handleBounce() {
         console.log("[Bounce] Starting login flow. Return URL:", returnUrlParam);
         try {
             // Start the flow
-            // Pass return_url as state so we get it back after callback
+            // Pass return_url or popup flag as state
             await userManager.signinRedirect({
-                state: returnUrlParam
+                state: isPopup ? undefined : returnUrlParam
             });
         } catch (err) {
             console.error("[Bounce] Failed to start redirect:", err);
             document.body.innerText = "Failed to start login: " + err;
+        }
+        return;
+    }
+
+    if (isPopup) {
+        console.log("[Bounce] Starting login flow in POPUP.");
+        try {
+            await userManager.signinRedirect({});
+        } catch (err) {
+            console.error("[Bounce] Failed to start redirect:", err);
+            document.body.innerText = "Failed to start login: " + err;
+            if (window.opener) {
+                window.opener.postMessage({ type: 'BOUNCE_ERROR', error: String(err) }, window.location.origin);
+            }
         }
         return;
     }

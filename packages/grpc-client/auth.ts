@@ -17,19 +17,55 @@ export class AuthManager {
     }
 
     static async refreshSession(): Promise<string> {
-        console.log("[AuthManager] Token missing or expired. Redirecting to Bounce Server...");
+        console.log("[AuthManager] Token missing or expired. Opening Bounce Popup...");
         const origin = window.location.origin;
-        // Assume bounce.html is available at /static/bounce.html on the same Gateway
-        // or a different domain. Here we assume same domain or known URL.
         const bounceUrl = `${origin}/static/bounce.html`;
 
-        const returnUrl = window.location.href;
-        const target = `${bounceUrl}?return_url=${encodeURIComponent(returnUrl)}`;
+        // Calculate screen center for popup
+        const width = 600;
+        const height = 700;
+        const left = (window.innerWidth - width) / 2 + window.screenX;
+        const top = (window.innerHeight - height) / 2 + window.screenY;
 
-        window.location.replace(target);
+        const popup = window.open(
+            `${bounceUrl}?popup=true`,
+            'BounceAuth',
+            `width=${width},height=${height},left=${left},top=${top}`
+        );
 
-        // We will never return from this function as the page unloads
-        return new Promise<string>(() => { });
+        if (!popup) {
+            console.error("[AuthManager] Popup blocked. Please allow popups for this site.");
+            throw new Error("Popup blocked");
+        }
+
+        return new Promise<string>((resolve, reject) => {
+            const handler = (event: MessageEvent) => {
+                // Ensure message comes from our origin
+                if (event.origin !== origin) return;
+
+                if (event.data && event.data.type === 'BOUNCE_SUCCESS') {
+                    console.log("[AuthManager] Valid token received from popup.");
+                    window.removeEventListener('message', handler);
+                    resolve(event.data.token);
+                } else if (event.data && event.data.type === 'BOUNCE_ERROR') {
+                    console.error("[AuthManager] Error received from popup:", event.data.error);
+                    window.removeEventListener('message', handler);
+                    reject(new Error(event.data.error));
+                }
+            };
+
+            window.addEventListener('message', handler);
+
+            // Optional: Check if popup is closed manually
+            const timer = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(timer);
+                    window.removeEventListener('message', handler);
+                    // If we haven't resolved yet, it means the user closed it without success
+                    reject(new Error("Popup closed by user"));
+                }
+            }, 1000);
+        });
     }
 }
 
