@@ -1,68 +1,35 @@
 import { UserManager, User, WebStorageStateStore } from 'oidc-client-ts';
 
 export class AuthManager {
-    private static userManager: UserManager;
 
-    static initialize() {
-        if (this.userManager) return;
-
-        const origin = window.location.origin;
-
-        this.userManager = new UserManager({
-            authority: "http://localhost:8081", // IdP URL
-            client_id: "grpc-client",
-            redirect_uri: `${origin}/silent-auth.html`, // Used for standard redirects
-            popup_redirect_uri: `${origin}/silent-auth.html`,
-            post_logout_redirect_uri: origin,
-            response_type: "code",
-            scope: "openid profile",
-            // Use local storage to persist user session across reloads
-            userStore: new WebStorageStateStore({ store: window.localStorage }),
-            // Optional: Automation of silent refresh via iframe
-            automaticSilentRenew: true,
-            silent_redirect_uri: `${origin}/silent-auth.html`,
-            metadata: {
-                issuer: "http://localhost:8081",
-                authorization_endpoint: "http://localhost:8081/authorize",
-                token_endpoint: "http://localhost:8081/token",
-                userinfo_endpoint: "http://localhost:8081/userinfo",
-                jwks_uri: "http://localhost:8081/.well-known/jwks.json",
-            }
-        });
-
-        // Log events for debugging
-        this.userManager.events.addUserLoaded((user: User) => {
-            console.log("[AuthManager] User loaded:", user.profile);
-        });
-        this.userManager.events.addSilentRenewError((error: Error) => {
-            console.error("[AuthManager] Silent renew error:", error);
-        });
+    static getCookie(name: string): string | null {
+        const value = `; ${document.cookie}`;
+        const parts = value.split(`; ${name}=`);
+        if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+        return null;
     }
 
     static async getValidToken(): Promise<string | null> {
-        this.initialize();
-        const user = await this.userManager.getUser();
-
-        if (user && !user.expired) {
-            return user.access_token;
-        }
-
-        // If expired or missing, try silent refresh first if configured, or just return null
-        // to let the interceptor trigger a full refresh (popup).
-        // For this implementation, we'll return null and let the retry mechanism handle it.
-        return null;
+        // Trivial implementation: read from cookie
+        // The bounce server handles refreshing by re-triggering the flow if needed?
+        // Actually, if cookie is expired, we return null, interceptor triggers refreshSession -> redirects to bounce
+        return this.getCookie('auth_token');
     }
+
     static async refreshSession(): Promise<string> {
-        this.initialize();
-        console.log("[AuthManager] Initiating Signin Popup...");
-        try {
-            const user = await this.userManager.signinPopup();
-            console.log("[AuthManager] Signin successful:", user.profile);
-            return user.access_token;
-        } catch (err) {
-            console.error("[AuthManager] Signin failed:", err);
-            throw err;
-        }
-    }
+        console.log("[AuthManager] Token missing or expired. Redirecting to Bounce Server...");
+        const origin = window.location.origin;
+        // Assume bounce.html is available at /static/bounce.html on the same Gateway
+        // or a different domain. Here we assume same domain or known URL.
+        const bounceUrl = `${origin}/static/bounce.html`;
 
+        const returnUrl = window.location.href;
+        const target = `${bounceUrl}?return_url=${encodeURIComponent(returnUrl)}`;
+
+        window.location.replace(target);
+
+        // We will never return from this function as the page unloads
+        return new Promise<string>(() => { });
+    }
 }
+

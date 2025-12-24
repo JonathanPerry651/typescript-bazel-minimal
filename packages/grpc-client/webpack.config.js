@@ -17,7 +17,7 @@ const workspaceRoot = findWorkspaceRoot(__dirname);
 
 module.exports = {
     output: {
-        filename: 'silent_auth_bundle.js',
+        filename: '[name].js',
         path: path.resolve(__dirname, 'dist'),
     },
     mode: 'production',

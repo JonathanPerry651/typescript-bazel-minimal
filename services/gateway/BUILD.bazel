@@ -19,6 +19,7 @@ pkg_tar(
     srcs = glob(["static/**"]) + [
         "//packages/calculator:bundle",
         "//packages/grpc-client:silent_auth_bundle",
+        "//packages/grpc-client:bounce_bundle",
     ],
     package_dir = "/app/static",
 )
