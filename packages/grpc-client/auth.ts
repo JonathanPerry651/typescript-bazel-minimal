@@ -1,5 +1,4 @@
 
-
 export class AuthManager {
 
     static getCookie(name: string): string | null {
@@ -10,45 +9,88 @@ export class AuthManager {
     }
 
     static async getValidToken(): Promise<string | null> {
-        // Trivial implementation: read from cookie
-        // The bounce server handles refreshing by re-triggering the flow if needed?
-        // Actually, if cookie is expired, we return null, interceptor triggers refreshSession -> redirects to bounce
         return this.getCookie('auth_token');
     }
 
+    /**
+     * Attempts to refresh the session.
+     * 1. Try silent refresh via iframe (prompt=none)
+     * 2. If silent fails, open a popup for interactive login
+     */
     static async refreshSession(): Promise<string> {
-        console.log("[AuthManager] Token missing or expired. Opening Bounce Popup...");
-        const origin = window.location.origin;
-        const bounceUrl = `${origin}/static/bounce.html`;
+        console.log("[AuthManager] Token missing or expired. Attempting silent refresh...");
 
-        // Calculate screen center for popup
+        try {
+            return await this.trySilentRefresh();
+        } catch (err) {
+            console.warn("[AuthManager] Silent refresh failed, falling back to popup login.", err);
+            return await this.openLoginPopup();
+        }
+    }
+
+    private static async trySilentRefresh(): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const origin = window.location.origin;
+            const bounceUrl = `${origin}/static/bounce.html?mode=silent`;
+
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = bounceUrl;
+
+            const timeout = setTimeout(() => {
+                cleanup();
+                reject(new Error("Silent refresh timed out"));
+            }, 5000);
+
+            const handler = (event: MessageEvent) => {
+                if (event.origin !== origin) return;
+                if (event.data?.type === 'AUTH_SUCCESS') {
+                    cleanup();
+                    resolve(event.data.token);
+                } else if (event.data?.type === 'AUTH_ERROR') {
+                    cleanup();
+                    reject(new Error(event.data.error));
+                }
+            };
+
+            const cleanup = () => {
+                clearTimeout(timeout);
+                window.removeEventListener('message', handler);
+                document.body.removeChild(iframe);
+            };
+
+            window.addEventListener('message', handler);
+            document.body.appendChild(iframe);
+        });
+    }
+
+    private static async openLoginPopup(): Promise<string> {
+        console.log("[AuthManager] Opening login popup...");
+        const origin = window.location.origin;
+        const bounceUrl = `${origin}/static/bounce.html?mode=login`;
+
         const width = 600;
         const height = 700;
         const left = (window.innerWidth - width) / 2 + window.screenX;
         const top = (window.innerHeight - height) / 2 + window.screenY;
 
         const popup = window.open(
-            `${bounceUrl}?popup=true`,
-            'BounceAuth',
+            bounceUrl,
+            'AuthPortal',
             `width=${width},height=${height},left=${left},top=${top}`
         );
 
         if (!popup) {
-            console.error("[AuthManager] Popup blocked. Please allow popups for this site.");
             throw new Error("Popup blocked");
         }
 
-        return new Promise<string>((resolve, reject) => {
+        return new Promise((resolve, reject) => {
             const handler = (event: MessageEvent) => {
-                // Ensure message comes from our origin
                 if (event.origin !== origin) return;
-
-                if (event.data && event.data.type === 'BOUNCE_SUCCESS') {
-                    console.log("[AuthManager] Valid token received from popup.");
+                if (event.data?.type === 'AUTH_SUCCESS') {
                     window.removeEventListener('message', handler);
                     resolve(event.data.token);
-                } else if (event.data && event.data.type === 'BOUNCE_ERROR') {
-                    console.error("[AuthManager] Error received from popup:", event.data.error);
+                } else if (event.data?.type === 'AUTH_ERROR') {
                     window.removeEventListener('message', handler);
                     reject(new Error(event.data.error));
                 }
@@ -56,16 +98,13 @@ export class AuthManager {
 
             window.addEventListener('message', handler);
 
-            // Optional: Check if popup is closed manually
             const timer = setInterval(() => {
                 if (popup.closed) {
                     clearInterval(timer);
                     window.removeEventListener('message', handler);
-                    // If we haven't resolved yet, it means the user closed it without success
-                    reject(new Error("Popup closed by user"));
+                    reject(new Error("Login popup closed by user"));
                 }
             }, 1000);
         });
     }
 }
-
