@@ -1,7 +1,16 @@
 package services.gateway;
 
 import com.sun.net.httpserver.SimpleFileServer;
+
 import com.sun.net.httpserver.HttpServer;
+import com.sun.net.httpserver.HttpHandler;
+import com.sun.net.httpserver.HttpExchange;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.URI;
+import java.io.IOException;
+import java.io.OutputStream;
 import io.grpc.*;
 import io.grpc.stub.ClientCalls;
 import io.grpc.stub.ServerCalls;
@@ -37,6 +46,10 @@ public class GatewayServer {
                 new InetSocketAddress(HTTP_PORT),
                 staticDir,
                 SimpleFileServer.OutputLevel.VERBOSE);
+
+        // Add Proxy Handler for OIDC Token Endpoint
+        httpServer.createContext("/api/proxy_token", new TokenProxyHandler("http://localhost:8081/token"));
+
         httpServer.start();
         logger.info("HTTP Server started on port " + HTTP_PORT);
 
@@ -231,6 +244,73 @@ public class GatewayServer {
                 public void onReady() {
                 }
             };
+        }
+    }
+
+    // Simple Proxy Handler for forwarding POST requests (like Token Exchange)
+    static class TokenProxyHandler implements HttpHandler {
+        private final String targetUrl;
+        private final HttpClient httpClient;
+
+        public TokenProxyHandler(String targetUrl) {
+            this.targetUrl = targetUrl;
+            this.httpClient = HttpClient.newHttpClient();
+        }
+
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            try {
+                // CORS Headers (Always allow from our own origin/subdomains)
+                exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+                exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "POST, OPTIONS");
+                exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "*");
+
+                if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                    exchange.sendResponseHeaders(204, -1);
+                    return;
+                }
+
+                if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
+                    exchange.sendResponseHeaders(405, -1);
+                    return;
+                }
+
+                // Read request body
+                InputStream is = exchange.getRequestBody();
+                byte[] val = is.readAllBytes();
+
+                // Forward to IdP
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create(targetUrl))
+                        .header("Content-Type", "application/x-www-form-urlencoded") // Token endpoint usually expects
+                                                                                     // this
+                        .POST(HttpRequest.BodyPublishers.ofByteArray(val))
+                        .build();
+
+                HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+
+                // Forward response headers (selected)
+                response.headers().map().forEach((k, v) -> {
+                    if (!k.equalsIgnoreCase("Content-Length") && !k.equalsIgnoreCase("Transfer-Encoding")) {
+                        v.forEach(h -> exchange.getResponseHeaders().add(k, h));
+                    }
+                });
+
+                // Send response
+                byte[] body = response.body();
+                exchange.sendResponseHeaders(response.statusCode(), body.length);
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(body);
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                String err = "Internal Proxy Error: " + e.getMessage();
+                exchange.sendResponseHeaders(500, err.length());
+                try (OutputStream os = exchange.getResponseBody()) {
+                    os.write(err.getBytes());
+                }
+            }
         }
     }
 }

@@ -18,39 +18,22 @@ class AuthInterceptor {
     async intercept(request: any, invoker: any) {
         const metadata = request.getMetadata();
 
-        try {
-            // 1. Initial attempt with current token (or refresh if missing)
-            const token = await AuthManager.getValidToken();
-            if (token) {
-                metadata['Authorization'] = `Bearer ${token}`;
-            }
-        } catch (err) {
-            console.error("[AuthInterceptor] Failed to get initial token:", err);
-            // Proceed without token, backend might return 401/16
+        // Add current token if available
+        const token = await AuthManager.getValidToken();
+        if (token) {
+            metadata['Authorization'] = `Bearer ${token}`;
         }
 
         try {
             return await invoker(request);
         } catch (err: any) {
-            // 2. Check for UNAUTHENTICATED (gRPC code 16)
+            // Check for UNAUTHENTICATED (gRPC code 16)
             if (err && err.code === 16) {
-                console.warn("[AuthInterceptor] Received UNAUTHENTICATED (16). Refreshing token and retrying...");
-
-                try {
-                    // Force refresh
-                    const newToken = await AuthManager.refreshSession();
-                    if (newToken) {
-                        metadata['Authorization'] = `Bearer ${newToken}`;
-                    }
-
-                    // Retry request
-                    return await invoker(request);
-                } catch (retryErr) {
-                    console.error("[AuthInterceptor] Retry failed:", retryErr);
-                    throw retryErr; // Throw the retry error
-                }
+                console.warn("[AuthInterceptor] Received UNAUTHENTICATED (16). Redirecting to auth...");
+                // This navigates away - the page will reload after auth
+                AuthManager.refreshSession();
             }
-            throw err; // Re-throw other errors
+            throw err;
         }
     }
 }

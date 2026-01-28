@@ -1,96 +1,109 @@
 import { UserManager, WebStorageStateStore } from 'oidc-client-ts';
+import { AuthManager } from './auth';
 
 const origin = window.location.origin;
-// bounce.html acts as the Redirect URI for the IdP
 const redirectUri = `${origin}/static/bounce.html`;
 
 const userManager = new UserManager({
     authority: "http://localhost:8081",
     client_id: "grpc-client",
     redirect_uri: redirectUri,
-    silent_redirect_uri: redirectUri, // We use the same page for silent refresh callbacks
     response_type: "code",
     scope: "openid profile",
-    // Persist state (code_verifier) in localStorage so it survives redirects
     userStore: new WebStorageStateStore({ store: window.localStorage }),
     metadata: {
         issuer: "http://localhost:8081",
         authorization_endpoint: "http://localhost:8081/authorize",
-        token_endpoint: "http://localhost:8081/token",
+        token_endpoint: "/api/proxy_token",
         userinfo_endpoint: "http://localhost:8081/userinfo",
         jwks_uri: "http://localhost:8081/.well-known/jwks.json",
     }
 });
 
+function setAuthCookie(accessToken: string, expiresIn?: number): void {
+    const cookieDomain = window.location.hostname === 'localhost'
+        ? ''
+        : `; Domain=.${window.location.hostname.split('.').slice(-2).join('.')}`;
+    document.cookie = `auth_token=${accessToken}; Path=/; Max-Age=${expiresIn || 3600}; SameSite=Lax${cookieDomain}`;
+}
+
+function redirectToReturnUrl(): void {
+    const returnUrl = AuthManager.getAndClearReturnUrl();
+    console.log("[Bounce] Redirecting to:", returnUrl);
+    window.location.href = returnUrl;
+}
+
 async function handleBounce() {
     const urlParams = new URLSearchParams(window.location.search);
-
-    // Check for OIDC callback parameters (either in query or fragment)
-    const isCallback = urlParams.has('code') || urlParams.has('error') || window.location.hash.includes('code=');
     const mode = urlParams.get('mode');
+
+    // Check for OIDC callback (code or error in query params)
+    const hasCode = urlParams.has('code');
+    const hasError = urlParams.has('error');
+    const isCallback = hasCode || hasError;
 
     // 1. Handle OIDC Callback
     if (isCallback) {
         console.log("[Bounce] Processing OIDC callback...");
+
+        // Check if this is a failed silent refresh (login_required)
+        if (hasError && urlParams.get('error') === 'login_required') {
+            console.log("[Bounce] Silent refresh failed (login_required). Falling back to full login...");
+            // Fall back to full interactive login
+            await userManager.signinRedirect();
+            return;
+        }
+
+        if (hasError) {
+            // Other OIDC errors - show error and redirect home
+            const errorDesc = urlParams.get('error_description') || urlParams.get('error');
+            console.error("[Bounce] OIDC error:", errorDesc);
+            document.body.innerText = "Authentication failed: " + errorDesc;
+            setTimeout(() => redirectToReturnUrl(), 3000);
+            return;
+        }
+
         try {
-            // signinCallback handles both standard and silent (iframe) callbacks
             const user = await userManager.signinCallback();
-
             if (user) {
-                console.log("[Bounce] Login successful. Setting domain cookie.");
-                // Set cookie on root domain to allow subdomains to access it
-                // For localhost, we use an empty domain or '.localhost'
-                const cookieDomain = window.location.hostname === 'localhost' ? '' : `; Domain=.${window.location.hostname.split('.').slice(-2).join('.')}`;
-                document.cookie = `auth_token=${user.access_token}; Path=/; Max-Age=${user.expires_in || 3600}; SameSite=Lax${cookieDomain}`;
-
-                // Notify the opener (popup) or parent (iframe)
-                const targetWindow = window.opener || window.parent;
-                if (targetWindow && targetWindow !== window) {
-                    targetWindow.postMessage({ type: 'AUTH_SUCCESS', token: user.access_token }, "*");
-                }
+                console.log("[Bounce] Login successful. Setting cookie and redirecting...");
+                setAuthCookie(user.access_token, user.expires_in);
+                redirectToReturnUrl();
             }
         } catch (err) {
             console.error("[Bounce] Callback failed:", err);
-            const targetWindow = window.opener || window.parent;
-            if (targetWindow && targetWindow !== window) {
-                targetWindow.postMessage({ type: 'AUTH_ERROR', error: String(err) }, "*");
-            }
             document.body.innerText = "Authentication failed: " + err;
-        } finally {
-            // Close popup if we are in one
-            if (window.opener) {
-                setTimeout(() => window.close(), 1000);
-            }
+            setTimeout(() => redirectToReturnUrl(), 3000);
         }
         return;
     }
 
-    // 2. Handle Login Requests
+    // 2. Handle Refresh Request (try silent first with prompt=none)
+    if (mode === 'refresh') {
+        console.log("[Bounce] Attempting silent refresh (prompt=none)...");
+        try {
+            await userManager.signinRedirect({ prompt: 'none' });
+        } catch (err) {
+            console.error("[Bounce] Silent refresh initiation failed:", err);
+            // Fall back to full login
+            await userManager.signinRedirect();
+        }
+        return;
+    }
+
+    // 3. Handle Login Request (full interactive)
     if (mode === 'login') {
         console.log("[Bounce] Initiating interactive login...");
         try {
             await userManager.signinRedirect();
         } catch (err) {
-            console.error("[Bounce] Signin redirect failed:", err);
+            console.error("[Bounce] Login redirect failed:", err);
             document.body.innerText = "Redirect failed: " + err;
         }
         return;
     }
 
-    // 3. Handle Silent Refresh Requests
-    if (mode === 'silent') {
-        console.log("[Bounce] Initiating silent refresh...");
-        try {
-            // prompt=none tells the IdP not to show any UI
-            await userManager.signinRedirect({ prompt: 'none' });
-        } catch (err) {
-            console.error("[Bounce] Silent refresh failed:", err);
-            window.parent.postMessage({ type: 'AUTH_ERROR', error: 'silent_failed' }, "*");
-        }
-        return;
-    }
-
-    // Default: Readiness check
+    // Default: show status
     document.body.innerText = "Auth Portal Ready.";
 }
 
