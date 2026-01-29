@@ -59,3 +59,78 @@ public class MidnightKiller {
         }
     }
 }
+
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
+
+public class ForwardingHandler implements HttpHandler {
+
+    private final String targetDomain; // e.g., "https://api.otherdomain.com"
+    private final HttpClient httpClient;
+
+    public ForwardingHandler(String targetDomain) {
+        this.targetDomain = targetDomain;
+        this.httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
+    }
+
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+        try {
+            // 1. Construct the target URI (preserving path and query)
+            String fullTargetUrl = targetDomain + exchange.getRequestURI().toString();
+            
+            // 2. Prepare the outgoing request
+            HttpRequest.Builder rb = HttpRequest.newBuilder()
+                    .uri(URI.create(fullTargetUrl))
+                    .method(exchange.getRequestMethod(), 
+                            HttpRequest.BodyPublishers.ofInputStream(() -> exchange.getRequestBody()));
+
+            // 3. Copy Request Headers
+            exchange.getRequestHeaders().forEach((key, values) -> {
+                // Skip headers that might cause conflicts like 'Host' or 'Content-Length'
+                if (!key.equalsIgnoreCase("Host") && !key.equalsIgnoreCase("Content-Length")) {
+                    for (String value : values) {
+                        rb.header(key, value);
+                    }
+                }
+            });
+
+            // 4. Execute the request
+            HttpResponse<InputStream> response = httpClient.send(rb.build(), 
+                    HttpResponse.BodyHandlers.ofInputStream());
+
+            // 5. Copy Response Headers back to the client
+            response.headers().map().forEach((key, values) -> {
+                for (String value : values) {
+                    exchange.getResponseHeaders().add(key, value);
+                }
+            });
+
+            // 6. Send response status and body
+            exchange.sendResponseHeaders(response.statusCode(), 0); // 0 = chunked transfer
+            try (InputStream is = response.body(); OutputStream os = exchange.getResponseBody()) {
+                is.transferTo(os);
+            }
+
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            exchange.sendResponseHeaders(500, -1);
+        } catch (Exception e) {
+            e.printStackTrace();
+            exchange.sendResponseHeaders(502, -1); // Bad Gateway
+        } finally {
+            exchange.close();
+        }
+    }
+}
+
